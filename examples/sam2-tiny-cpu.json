@@ -1,0 +1,15 @@
+{
+  "backend": "sam2",
+  "sam2_model": "tiny",
+  "checkpoint": "models/sam2.1_hiera_tiny.pt",
+  "device": "cpu",
+  "points_per_side": 32,
+  "points_per_batch": 16,
+  "min_nucleus_area": 5000,
+  "max_nucleus_area": 50000,
+  "positive_threshold": 10,
+  "threshold_mode": "local",
+  "image_threshold": 90,
+  "neighborhood_size": 21,
+  "quality_filter": "none"
+}

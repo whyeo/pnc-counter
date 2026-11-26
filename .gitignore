@@ -1,3 +1,14 @@
 .DS_Store
 testfiles/*
 pnc_counting/testfiles/*
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+results/
+models/
+validation/local/

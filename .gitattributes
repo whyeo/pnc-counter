@@ -1,0 +1,2 @@
+# Preserve the original MATLAB blob, which was committed with CRLF endings.
+legacy/matlab/common/nd2read.m -text
