@@ -143,12 +143,32 @@ def read_image(path, config=None, axes=None):
             metadata = {"source": str(path.resolve()), "sizes": sizes,
                         "channels": [c.channel.name for c in reader.metadata.channels or []],
                         "time_index": config.time_index, "position_index": config.position_index}
+            channels = reader.metadata.channels or []
+            volume = channels[config.dapi_channel].volume if len(channels) > config.dapi_channel else None
+            if volume is not None and all(volume.axesCalibrated[:2]):
+                voxel = reader.voxel_size()
+                metadata["pixel_size_um"] = {"x": float(voxel.x), "y": float(voxel.y)}
             return Projections(dapi_sum / n_planes, scale_uint8(dapi_max), pnc_max, metadata)
     if path.suffix.lower() in (".tif", ".tiff"):
         import tifffile
 
         with tifffile.TiffFile(path) as reader:
             series = reader.series[0]
+            metadata = {"source": str(path.resolve()), "axes": axes or series.axes}
+            if reader.ome_metadata:
+                from xml.etree import ElementTree
+
+                pixels = ElementTree.fromstring(reader.ome_metadata).find(".//{*}Pixels")
+                sizes = {}
+                factors = {"um": 1, "µm": 1, "μm": 1, "nm": 0.001, "mm": 1000}
+                if pixels is not None:
+                    for axis in ("X", "Y"):
+                        value = pixels.get(f"PhysicalSize{axis}")
+                        factor = factors.get(pixels.get(f"PhysicalSize{axis}Unit", "µm"))
+                        if value is not None and factor is not None:
+                            sizes[axis.lower()] = float(value) * factor
+                if len(sizes) == 2:
+                    metadata["pixel_size_um"] = sizes
             return project_array(series.asarray(), axes or series.axes, config,
-                                 {"source": str(path.resolve()), "axes": axes or series.axes})
+                                 metadata)
     raise ValueError("Supported input formats: .nd2, .tif, .tiff")

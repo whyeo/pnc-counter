@@ -1,5 +1,43 @@
 # Changelog
 
+## Windows installer and guided setup (v0.6.0)
+
+- Added a per-user Windows Setup executable with private portable Python/Tk,
+  Start menu/optional desktop shortcuts, and an uninstaller that preserves user data.
+- Added a first-run wizard for CPU/NVIDIA selection, PyTorch installation, bundled
+  official SAM 2.1, verified model downloads and actual model-inference checks.
+- Isolated analysis engines from the base app and other Python installations;
+  failed/cancelled installations preserve the working setup and can be retried.
+- Added setup logs, driver rechecks/download guidance, Windows runtime help and
+  setup/repair entry points. Subsequent launches use the verified saved environment.
+- Added pinned builder downloads, scientific version constraints, package manifests,
+  setup regression tests and a manual Windows installer CI workflow.
+
+## Simpler desktop workflow (v0.5.0)
+
+- Added native file/folder drops, additive selection, recursive discovery and duplicate exclusion.
+- Fixed filename rows appearing only after analysis; stable rows now have separate status and result columns.
+- Added raw channel previews, conservative metadata suggestions and remembered acquisition confirmations.
+- Moved technical options into Advanced settings, with protocol import/export and explicit acquisition overrides.
+- Added background hardware checks, saved setup/preferences, automatic accelerator selection and hardware redetection.
+- Added verified model downloads and local model discovery without silently switching scientific settings.
+- Added named processing stages, finished-image progress, live elapsed/estimated time and retained cancelled rows.
+- Cached projections as well as masks to speed repeat measurements; added desktop selection/setup/batch regressions.
+- Fixed ND2 raw-preview ownership so frame pixels remain valid after closing the memory-mapped reader.
+
+## Accuracy and analysis workflows (v0.4.0)
+
+- Added verified reference registration, group-separated validation/test sets,
+  content-matched prediction discovery, and end-to-end instance/PNC benchmarks.
+- Added physical nucleus-area bounds, ND2/OME calibration, X/Y pixel-size overrides,
+  explicit border rules, and physical-area exports.
+- Added prioritized review queues, notes, reviewer identity, confirmation state,
+  empty-field confirmation, and manual PNC overrides.
+- Added opt-in candidate spot counting with touching-object splitting, size
+  filtering, background subtraction, unique nucleus assignment, and exports.
+- Preserved default MATLAB-compatible counts and reading of schema-1 reviews;
+  new reviews use checksummed schema 2.
+
 ## Manual review (v0.3.0)
 
 - Added nucleus selection, polygon/freehand add and redraw, rejection/restoration,

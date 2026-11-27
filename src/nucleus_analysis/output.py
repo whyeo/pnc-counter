@@ -56,6 +56,11 @@ def visualization(result):
     panels = [Image.fromarray(result.images["ch1_max"]).convert("RGB"), overlay(result),
               Image.fromarray(scale_uint8(result.images["ch2"])).convert("RGB"),
               Image.fromarray(result.images["ch2_thresh"].astype(np.uint8) * 255).convert("RGB")]
+    if result.config.pnc_mode == "spots":
+        draw_spots = ImageDraw.Draw(panels[3])
+        for spot in result.spots or []:
+            x, y = spot["CentroidX"] - 1, spot["CentroidY"] - 1
+            draw_spots.ellipse((x - 4, y - 4, x + 4, y + 4), outline=(40, 255, 100), width=2)
     canvas = Image.new("RGB", (w * 2, (h + 26) * 2), "#151820")
     draw = ImageDraw.Draw(canvas)
     for i, (panel, title) in enumerate(zip(panels, ["DAPI", "Nuclei: blue positive / pink negative / gray rejected / yellow flagged",
@@ -75,7 +80,9 @@ def export_result(result, directory, *, provenance=None):
     try:
         app_version = version("nucleus-analysis")
     except PackageNotFoundError:
-        app_version = "0.3.0+source"
+        from . import __version__
+
+        app_version = __version__ + "+source"
     metadata = {"version": app_version, "created_utc": datetime.now(timezone.utc).isoformat(),
                 "summary": result.basic_stats,
                 "config": result.config.to_dict(), "input": result.metadata,
@@ -93,4 +100,7 @@ def export_result(result, directory, *, provenance=None):
     np.savez_compressed(directory / "images.npz", **result.images)
     if result.masks is not None:
         save_masks(directory / "nuclei_masks.npz", result.masks, result.images["ch1_max"].shape)
+    if result.config.pnc_mode == "spots":
+        write_csv(directory / "spots.csv", result.spots or [],
+                  ["SpotID", "Area", "CentroidX", "CentroidY", "AnchorPixel", "NucleusID"])
     visualization(result).save(directory / "visualization.png")

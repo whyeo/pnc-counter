@@ -31,6 +31,19 @@ class AnalysisConfig:
     stability_threshold: float = 0.95
     watershed_min_distance: int = 30
     watershed_sigma: float = 2.0
+    min_nucleus_area_um2: float | None = None
+    max_nucleus_area_um2: float | None = None
+    pixel_size_x_um: float | None = None
+    pixel_size_y_um: float | None = None
+    border_policy: str = "include"
+    border_margin: int = 0
+    pnc_mode: str = "pixels"
+    min_spot_count: int = 1
+    spot_min_area: int = 3
+    spot_max_area: int = 500
+    spot_min_distance: int = 3
+    spot_background_sigma: float = 0.0
+    review_positive_margin: int = 3
 
     def __post_init__(self):
         choices = {
@@ -38,17 +51,20 @@ class AnalysisConfig:
             "threshold_mode": ("local", "global"),
             "quality_filter": ("none", "legacy-svm"),
             "sam2_model": ("tiny", "small", "base_plus", "large"),
+            "border_policy": ("include", "exclude"),
+            "pnc_mode": ("pixels", "spots"),
         }
         for name, allowed in choices.items():
             if getattr(self, name) not in allowed:
                 raise ValueError(f"{name} must be one of {allowed}")
         for name in ("min_nucleus_area", "max_nucleus_area", "neighborhood_size",
-                     "points_per_side", "points_per_batch", "watershed_min_distance"):
+                     "points_per_side", "points_per_batch", "watershed_min_distance",
+                     "min_spot_count", "spot_min_area", "spot_max_area", "spot_min_distance"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
                 raise ValueError(f"{name} must be a positive integer")
         for name in ("positive_threshold", "dapi_channel", "pnc_channel", "time_index",
-                     "position_index"):
+                     "position_index", "border_margin", "review_positive_margin"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"{name} must be a nonnegative integer")
@@ -69,6 +85,19 @@ class AnalysisConfig:
             raise ValueError("device must be cpu, cuda, or mps")
         if not isinstance(self.sam3_prompt, str) or not self.sam3_prompt.strip():
             raise ValueError("sam3_prompt must be nonempty text")
+        for first, last in (("min_nucleus_area_um2", "max_nucleus_area_um2"),
+                            ("pixel_size_x_um", "pixel_size_y_um")):
+            a, b = getattr(self, first), getattr(self, last)
+            if (a is None) != (b is None):
+                raise ValueError(f"Specify both {first} and {last}")
+            if a is not None and any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for v in (a, b)):
+                raise ValueError(f"{first} and {last} must be positive and finite")
+        if self.min_nucleus_area_um2 is not None and self.min_nucleus_area_um2 > self.max_nucleus_area_um2:
+            raise ValueError("Minimum physical area must not exceed maximum physical area")
+        if self.spot_min_area > self.spot_max_area:
+            raise ValueError("spot_min_area must not exceed spot_max_area")
+        if not math.isfinite(self.spot_background_sigma) or self.spot_background_sigma < 0:
+            raise ValueError("spot_background_sigma must be nonnegative and finite")
 
     def to_dict(self):
         return asdict(self)

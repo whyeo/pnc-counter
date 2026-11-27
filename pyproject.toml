@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nucleus-analysis"
-version = "0.3.0"
+version = "0.6.0"
 description = "Python nucleus segmentation and perinucleolar compartment counting"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,6 +17,7 @@ dependencies = [
   "nd2>=0.10,<1",
   "tifffile>=2023.7.10",
   "Pillow>=10",
+  "tkinterdnd2>=0.7,<1",
 ]
 
 [project.optional-dependencies]
@@ -25,7 +26,8 @@ dev = ["pytest>=8", "build>=1", "ruff>=0.8"]
 
 [project.scripts]
 nucleus-analysis = "nucleus_analysis.cli:main"
-pnc-counter = "nucleus_analysis.gui:main"
+pnc-counter = "nucleus_analysis.desktop_launcher:main"
+nucleus-benchmark = "nucleus_analysis.benchmark:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

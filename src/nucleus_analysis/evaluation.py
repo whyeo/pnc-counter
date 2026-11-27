@@ -4,9 +4,9 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 
-def compare_labels(reference, predicted, iou_threshold=0.5):
+def compare_labels(reference, predicted, iou_threshold=0.5, *, return_pairs=False):
     reference, predicted = np.asarray(reference), np.asarray(predicted)
-    if reference.shape != predicted.shape or reference.ndim != 2:
+    if reference.shape != predicted.shape or reference.ndim != 2 or not reference.size:
         raise ValueError("Reference and prediction must be matching 2D label images")
     if not 0 < iou_threshold <= 1:
         raise ValueError("IoU threshold must be in (0, 1]")
@@ -28,7 +28,7 @@ def compare_labels(reference, predicted, iou_threshold=0.5):
     good = iou[rows, cols] >= iou_threshold
     matched = int(good.sum())
     n_reference, n_predicted = iou.shape
-    return {"iou_threshold": iou_threshold, "n_reference": n_reference,
+    result = {"iou_threshold": iou_threshold, "n_reference": n_reference,
             "n_predicted": n_predicted, "matched": matched,
             "unmatched_reference": n_reference - matched,
             "unmatched_prediction": n_predicted - matched,
@@ -36,3 +36,8 @@ def compare_labels(reference, predicted, iou_threshold=0.5):
             "recall": matched / n_reference if n_reference else None,
             "f1": 2 * matched / (n_reference + n_predicted) if n_reference + n_predicted else None,
             "mean_matched_iou": float(iou[rows[good], cols[good]].mean()) if matched else None}
+    if return_pairs:
+        result["pairs"] = [{"reference_id": int(ref_ids[ref_present][r]),
+                            "predicted_id": int(pred_ids[pred_present][c]), "iou": float(iou[r, c])}
+                           for r, c in zip(rows[good], cols[good])]
+    return result

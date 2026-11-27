@@ -33,8 +33,8 @@ def main():
     export_result(result, original)
     root = tk.Tk()
     root.withdraw()
-    app = CounterApp(root)
-    item = app.table.insert("", "end", values=("synthetic", 1, 2, "50%"))
+    app = CounterApp(root, preference_file=args.output / "preferences.json", initialize=False)
+    item = app.table.insert("", "end", values=("synthetic", "Done", 1, 2, "50%"))
     app.output_by_item[item] = original
     app.table.selection_set(item)
     app.review_selected()
@@ -95,7 +95,7 @@ def main():
     assert app.output_by_item[item] != original
     reopened = ReviewSession.open(app.output_by_item[item])
     assert reopened.counts()[0] == editor.session.counts()[0]
-    assert app.table.item(item, "values")[2] == "3"
+    assert app.table.item(item, "values")[3] == "3"
     editor.close()
     root.destroy()
     print("Tk selection, redraw, add, split/merge, rejection, flags, undo/redo, zoom, save/reopen and table update passed")

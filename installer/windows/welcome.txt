@@ -1,0 +1,21 @@
+PNC Counter
+
+This installer includes Python and the image-analysis application. You do not need
+to install Python, edit PATH, use PowerShell, or have administrator access.
+
+On first launch, a short setup wizard will help you:
+  1. Choose CPU processing or a compatible NVIDIA GPU.
+  2. Install PyTorch and Meta SAM 2.1 into a private analysis environment.
+  3. Download and verify the selected nucleus-segmentation model.
+  4. Check that the model actually runs, then save the setup for future launches.
+
+An internet connection is needed for PyTorch and model downloads. GPU support can
+download several gigabytes and may take a while. The base application can be
+installed offline. You may skip analysis setup and finish it later using the
+Start menu's "PNC Counter setup and repair" shortcut.
+
+The setup wizard does not install GPU drivers. If a driver needs updating, it
+provides a link and a hardware recheck. CPU processing is also available.
+
+Your other Python installations and packages are kept separate. Uninstalling the
+application preserves your images, results, preferences and downloaded models.

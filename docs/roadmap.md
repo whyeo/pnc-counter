@@ -1,20 +1,28 @@
-# Proposed next improvements
+# Implemented workflows and next improvements
 
-Manual correction is now available. The most valuable next work is to turn
-reviewed cases into measurable accuracy evidence, then use that evidence to
-guide model and detection changes.
+The four requested priorities have implementations in v0.4. See the
+[accuracy workflow guide](accuracy-workflow.md) for definitions and limits.
 
-| Priority | Proposed change | Benefit and validation needed |
+| Requested priority | Implemented | Remaining scientific/user work |
 | --- | --- | --- |
-| 1 | Reviewed reference set and repeatable model benchmark | Export accepted nucleus labels and review PNC calls across representative HeLa/PC3M fields. Keep a held-out set; measure instance F1/IoU, count error, and PNC percentage error. This establishes whether a new model actually improves accuracy. |
-| 2 | Explicit border/ROI rules and physical-unit thresholds | Consistently include/exclude partial nuclei, mitotic cells, and damaged regions. Read pixel-size calibration and express area in µm² so magnification changes do not silently change the phenotype. The two unmatched baseline objects were border nuclei. |
-| 3 | Review queue and reasons/notes | Prioritize border objects, ambiguous shapes, low model confidence, and PNC counts near the cutoff. Add per-nucleus reasons, reviewer identity, and filters for flagged/unreviewed objects. Measure how much review effort this saves. |
-| 4 | Model-assisted boundary refinement | Let a reviewer provide positive/negative points or a box to refine an existing mask, followed by manual acceptance. Benchmark the updated SAM backends on the reviewed set before changing defaults. Preserve the current offline polygon editor. |
-| 5 | Distinct PNC puncta detection and manual PNC calls | The existing rule counts positive **pixels**, not individual PNCs. Add background correction, connected-object measurements, optional spot detection, and reviewer PNC+/PNC- overrides as separate, validated modes. Establish the biological rule first. |
-| 6 | Resumable batch processing and clearer progress | Resume completed inputs with provenance checks, expose current-file progress and failure retry, and select timepoints/positions in the desktop interface. Preserve manual reviews when rerunning a model. |
-| 7 | Installer/executable packaging | Provide a tested Windows installer with optional CPU/GPU model packs and offline setup. Test installation on clean machines; dependencies and checkpoint size dominate distribution size, even though application code is small. |
-| 8 | 3D segmentation and temporal tracking | Use Z/time information when projection hides overlapping nuclei or puncta. This changes the measurement definition and needs separate 3D annotations and validation; it should not silently replace the current 2D workflow. |
+| 1. Reviewed references and accuracy measurements | Explicit verification, manual PNC calls, grouped validation/test references, instance and PNC metrics, count/percentage errors | Review representative biological fields and maintain a genuinely independent held-out set. Synthetic tests do not establish biological accuracy. |
+| 2. Border rules and µm² thresholds | Border policy/margin, ND2/OME calibration, X/Y override, automatic nucleus bounds in µm², physical-area exports | Agree on border/mitotic/damaged-cell inclusion and appropriate area limits. |
+| 3. Uncertainty review queue | Flag/border/cutoff/shape/area priority; filters/navigation; reviewer, notes and verified state | Measure review effort; retain SAM scores if calibrated confidence-based review is needed. Current priorities are heuristics. |
+| 4. Candidate PNC spot counting | Separate mode, touching-spot splitting, size filtering, background subtraction, unique assignment, CSV/labels/overlays | Define biological puncta and validate noise, diffuse signal and projection effects on held-out fields. |
 
-A practical next milestone is priorities 1–3: review representative images,
-define border inclusion, and create a queue of uncertain detections. The saved
-correction history and label TIFFs now provide a foundation for that work.
+Desktop usability improvements implemented in v0.5 include file/folder drops,
+immediate filename rows, raw previews, remembered channel/time/position choices,
+Advanced settings, cached hardware detection with explicit redetection, automatic
+accelerator selection, model downloads, named progress stages and projection caching.
+
+Useful next engineering work:
+
+1. Point/box prompts for model-assisted boundary refinement, keeping polygon
+   editing and explicit acceptance of proposed changes.
+2. Resumable batches, retrying selected failed images, and processing all selected
+   time points/positions (the desktop currently analyzes one saved selection).
+3. Code signing and a separate clean-machine check for the v0.6 Windows installer;
+   optional fully offline PyTorch/model packs for labs without internet access.
+4. Physical spot-size/spacing controls and cross-magnification validation.
+5. Separate 3D segmentation/tracking when projection is insufficient; this
+   changes the measurement definition and needs independent 3D annotations.

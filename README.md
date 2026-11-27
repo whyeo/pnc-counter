@@ -11,6 +11,19 @@ biological accuracy. See [validation](docs/validation.md).
 
 ## Install
 
+### Windows installer (recommended for desktop users)
+
+Double-click `PNC-Counter-0.6.0-Setup-x64.exe`. Python and the base image tools are
+included. On first launch, the guided setup recommends CPU or NVIDIA GPU support,
+installs PyTorch and official SAM 2.1 in a separate private environment, downloads
+Tiny/Small weights, and tests real model inference before saving the setup.
+Users do not need PowerShell, a system Python, Git or a compiler. Later launches
+reuse the saved setup. **Set up / repair SAM** and a Start menu setup shortcut
+reopen the wizard. See the [Windows installation guide](docs/windows-installer.md)
+for downloads, prerequisites, repair, uninstall behavior, and build instructions.
+
+### Python package / developer installation
+
 Python 3.10+ is required (3.12+ for optional SAM 3). From this repository:
 
 ```powershell
@@ -24,7 +37,7 @@ On macOS/Linux activate with `source .venv/bin/activate`. Linux desktop users
 may need their distribution's `python3-tk` package; headless use does not need Tk.
 
 The base installation contains NumPy, SciPy, scikit-image, nd2, tifffile, and
-Pillow. Deep-learning dependencies and model weights are separate so a small
+Pillow, plus a small native Tk drag-and-drop wrapper. Deep-learning dependencies and model weights are separate so a small
 installation can read images, analyze existing masks, and use watershed.
 
 ## SAM 2.1 setup (recommended)
@@ -70,12 +83,45 @@ pnc-counter
 python -m nucleus_analysis --gui
 ```
 
-Select images or an input folder, choose an output folder and local SAM
-checkpoint, then process the batch. Select a result to inspect its four-panel
-visualization. Settings can be exported/imported as JSON. Changing a PNC threshold
-and processing again reuses the segmentation cache. Cancellation completes and
-saves the current image before stopping. Per-file failures appear in the table
-and in `errors.json`.
+Add images, add a folder, or drag multiple images/folders onto the drop area,
+table, or preview. Folders include nested acquisitions; duplicate paths and this
+app's result directories are excluded. Filenames appear immediately, with blank
+counts until each analysis completes. Select a row to see a raw channel preview,
+then click **Analyze images**. Completed rows show the analysis overlay and can
+be opened for correction. The separate Status column reports progress or errors.
+
+The first launch checks usable CPU/CUDA/MPS hardware in the background and locates
+the selected model. Setup, analysis preferences, output folder, and confirmed
+channel mappings are saved in a versioned JSON preferences file. On Windows it is
+`%LOCALAPPDATA%/PNC Counter/preferences.json`; macOS uses
+`~/Library/Application Support/PNC Counter/`, Linux uses
+`$XDG_CONFIG_HOME/PNC Counter/` (default `~/.config/PNC Counter/`). Subsequent launches
+reuse the hardware profile without importing Torch. Changes to Python or runtime
+package versions invalidate it automatically. After installing a driver or changing
+hardware, use **Advanced settings → Redetect hardware**. Auto selects an available
+accelerator while keeping the chosen segmentation model and scientific rules.
+
+Obvious DAPI/PNC channel names can be identified automatically. Generic marker
+names such as TxRED require an initial confirmation with thumbnails; **Check
+channels** changes a saved mapping. Mapping signatures include channel names,
+axis layout, channel count and time/position counts. Multi-time/position images
+require an explicit initial selection; this version analyzes one selected time
+and position. Preview contrast does not affect measured intensities. Physical
+calibration comes from ND2/OME metadata when present; unknown scale is not guessed.
+
+Technical settings, protocol JSON import/export, optional manual acquisition
+indices, and verified Tiny/Small checkpoint downloads are under **Advanced
+settings**. The Windows installer edition has **Set up / repair SAM** for the
+one-time engine installation; Python/wheel users can use the manual instructions
+above. Model downloads are explicit; analysis works offline.
+
+The progress display shows finished images separately from the current step:
+loading, finding nuclei, measuring PNC, and saving. Elapsed time updates while work
+continues; a rough remaining-time estimate appears after the first file. **Stop
+after this image** preserves finished results and retains unprocessed rows.
+Changing PNC thresholds reuses both the projection cache and segmentation cache;
+source path, size, modification time, reader version and channel/time/position
+selection invalidate projections. Per-file failures are saved in `errors.json`.
 
 ### Correct nuclei manually
 
@@ -101,6 +147,21 @@ the result). **Open saved analysis** reopens an original or reviewed
 See the [review guide](docs/manual-review.md) for overlap rules, stable IDs,
 keyboard shortcuts, and saved-file details. Proposed next improvements are
 prioritized in the [roadmap](docs/roadmap.md).
+
+### Accuracy workflow and additional analysis modes (v0.4)
+
+- **Advanced settings → Nuclei / PNC / Acquisition** includes explicit border exclusion, nucleus area
+  in µm² from ND2/OME calibration or manual pixel sizes, and a separate candidate
+  PNC spot mode. Default pixel counting is unchanged.
+- The sidebar now prioritizes uncertain/unreviewed/flagged objects and records
+  notes, reviewer names, verified status, and manual PNC calls.
+- **Add verified reference** registers completed reviews into grouped
+  validation/test sets. `nucleus-benchmark` reports instance/PNC F1/IoU and
+  count/percentage errors with source hashes.
+
+See the [accuracy workflow guide](docs/accuracy-workflow.md) for definitions,
+examples, and validation limits. Reference sets require explicit human review;
+model-produced masks are not automatically treated as ground truth.
 
 ## Batch analysis
 
@@ -199,16 +260,18 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m ruff check src tests tools
 python -m build
-python -m pip install dist/nucleus_analysis-0.3.0-py3-none-any.whl
+python -m pip install dist/nucleus_analysis-0.6.0-py3-none-any.whl
 ```
 
 The wheel contains only Python code and the small exported SVM, with no raw data,
 MATLAB code, JVM, neural weights, or bundled PyTorch. Distribute it with the
 appropriate dependencies and a separately downloaded checkpoint for offline use.
-The repository remains the supported setup path for the model-install helper.
+The repository also builds a Windows installer with a private Python runtime:
+`python tools/build_windows.py --bootstrap-compiler`. A manually triggered
+**Windows installer** GitHub Actions workflow builds the same installer.
 CI tests the base package on Windows/Linux with Python 3.10/3.12; real microscopy
-data tests skip when private local data are absent. A standalone executable is
-not included.
+data tests skip when private local data are absent. The Windows installer is
+unsigned; code signing and a separate clean Windows machine test remain release steps.
 
 The original implementation is preserved in [legacy/matlab](legacy/matlab) for
 historical comparison. [Migration notes](docs/migration.md) describe deliberate

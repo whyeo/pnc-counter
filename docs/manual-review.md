@@ -64,6 +64,13 @@ original** restores the original geometry and decisions and can itself be undone
 IDs of unaffected nuclei stay stable. Undo/redo stacks last for the current
 session; original snapshots and the audit history persist across saves/reopening.
 
+Version 0.4 adds review queues, reviewer notes, confirmation state, manual PNC
+calls, verified reference sets, and optional spot counting. See the
+[accuracy workflow guide](accuracy-workflow.md). Geometry changes reset
+confirmation and manual PNC overrides. To verify an empty field, select no nuclei
+and press **Confirm geometry + PNC**. Border-excluded detections remain excluded
+regardless of manual acceptance.
+
 ## Saved revisions
 
 **Save new revision** (Ctrl+S) asks for a parent folder and creates a unique
@@ -96,6 +103,11 @@ warning explains that overlapped portions of earlier masks may be missing.
 CLI `--masks` imports geometry only and does not restore manual decisions or
 flags. Reopen `analysis.json` through the app or `ReviewSession.open` to retain
 the complete review state.
+
+New review documents use schema version 2, including notes, confirmation,
+reviewer identity, PNC overrides, and measurement-CSV checksums. Version 1 reviews
+remain readable; detections start unverified because that format did not record
+explicit verification.
 
 ## Headless review API
 

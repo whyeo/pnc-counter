@@ -10,6 +10,14 @@ from skimage import measure
 from .config import AnalysisConfig
 from .imaging import Projections, read_image
 from .morphology import legacy_circularity, legacy_solidity
+from .phenotype import (
+    assign_spots,
+    detect_spots,
+    marker_image,
+    pixel_size,
+    segmentation_config,
+    touches_border,
+)
 from .quality import is_bad_mask
 from .segmentation import Segmenter, load_masks, validate_candidates
 
@@ -22,6 +30,7 @@ class AnalysisResult:
     config: AnalysisConfig
     metadata: dict
     masks: list[np.ndarray] | None = None
+    spots: list[dict] | None = None
 
 
 def threshold_pnc(image, config):
@@ -76,13 +85,17 @@ def _measure_mask(idx, shape, dapi_mean, dapi_max, percentiles):
 
 
 def analyze(projections: Projections, config=None, masks=None, segmenter=None, *,
-            mask_ids=None, rejected_ids=None, suppress_overlaps=True):
+            mask_ids=None, rejected_ids=None, suppress_overlaps=True, positive_overrides=None):
     config = config or AnalysisConfig()
     mean, maximum, pnc = projections.dapi_mean, projections.dapi_max, projections.pnc_max
     if mean.ndim != 2 or mean.shape != maximum.shape or mean.shape != pnc.shape:
         raise ValueError("Projections must be matching two-dimensional images")
     if masks is None:
-        masks = (segmenter or Segmenter(config)).generate(maximum)
+        effective = segmentation_config(config, projections.metadata)
+        segmenter = segmenter or Segmenter(effective)
+        segmenter.config = effective
+        masks = segmenter.generate(maximum)
+    segmentation_config(config, projections.metadata)  # Validate physical settings even for explicit masks.
     masks = validate_candidates(masks, maximum.shape)
     if mask_ids is not None:
         if (len(mask_ids) != len(masks) or len(set(mask_ids)) != len(mask_ids)
@@ -92,7 +105,9 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
         entries = list(zip(mask_ids, masks))
     else:
         entries = [(None, idx) for idx in sorted(masks, key=len)]
-    positive_pixels = threshold_pnc(pnc, config)
+    positive_pixels = threshold_pnc(marker_image(pnc, config), config)
+    spot_labels, spots = detect_spots(positive_pixels, config)
+    calibration = pixel_size(config, projections.metadata)
     # Percentile ranks stay finite on constant images and tied intensities.
     histogram = np.bincount(maximum.ravel(), minlength=256)
     ranks = 100 * np.cumsum(histogram) / maximum.size
@@ -111,6 +126,12 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
         n_pixels = int(positive_pixels.ravel()[idx].sum())
         rejected = (row["MaskID"] in rejected_ids if rejected_ids is not None
                     else config.quality_filter == "legacy-svm" and is_bad_mask(row))
+        row["RejectedByQuality"] = int(rejected)
+        border = touches_border(idx, maximum.shape, config.border_margin)
+        excluded = config.border_policy == "exclude" and border
+        rejected = rejected or excluded
+        row.update(TouchesBorder=int(border), ExcludedByBorder=int(excluded),
+                   Area_um2=float(len(idx) * calibration[0] * calibration[1]) if calibration else None)
         row.update(NumberCh2PixelsPositive=n_pixels, BadMask=int(rejected),
                    Positive=int(not rejected and n_pixels >= config.positive_threshold))
         if rejected:
@@ -126,13 +147,30 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
                 negative += 1
         rows.append(row)
         retained_masks.append(idx)
+    if config.pnc_mode == "spots" or positive_overrides:
+        spot_counts = assign_spots(rows, retained_masks, spots)
+        labels["mask_positive"].fill(0)
+        labels["mask_negative"].fill(0)
+        positive = negative = 0
+        for row, idx in zip(rows, retained_masks):
+            row["NumberPNCSpots"] = spot_counts[row["MaskID"]]
+            positive_call = (row["NumberPNCSpots"] >= config.min_spot_count if config.pnc_mode == "spots"
+                             else row["NumberCh2PixelsPositive"] >= config.positive_threshold)
+            positive_call = (positive_overrides or {}).get(row["MaskID"], positive_call)
+            row["Positive"] = int(not row["BadMask"] and positive_call)
+            if not row["BadMask"]:
+                labels["mask_positive" if row["Positive"] else "mask_negative"].ravel()[idx] = row["MaskID"]
+                positive += row["Positive"]
+                negative += not row["Positive"]
     total = positive + negative
     summary = {"percentage": 100 * positive / total if total else None,
                "n_negative": negative, "n_positive": positive, "n_bad": bad,
                "n_total": total, "n_masks": len(rows)}
     images = {"ch1": mean, "ch1_max": maximum, "ch2": pnc,
               "ch2_thresh": positive_pixels, **labels}
-    return AnalysisResult(summary, rows, images, config, projections.metadata, retained_masks)
+    if config.pnc_mode == "spots":
+        images["pnc_spots"] = spot_labels
+    return AnalysisResult(summary, rows, images, config, projections.metadata, retained_masks, spots)
 
 
 def count_pnc(path, positive_threshold=None, *, config=None, masks=None, axes=None):

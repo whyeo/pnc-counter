@@ -151,7 +151,7 @@ def test_review_round_trip_is_self_contained_and_original_is_untouched(review_da
     labels = tifffile.imread(first / "reviewed_labels.tif")
     assert labels.dtype == np.uint32 and set(np.unique(labels)) == {0, 2}
     assert "ReviewFlag" in (first / "nuclei.csv").read_text()
-    assert json.loads((first / "review.json").read_text())["schema_version"] == 1
+    assert json.loads((first / "review.json").read_text())["schema_version"] == 2
     # Original raw image files and the old output directory are not needed.
     reopened.original_directory = tmp_path / "no-longer-present"
     reopened.reset()

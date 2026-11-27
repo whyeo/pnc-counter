@@ -1,10 +1,11 @@
 """Lightweight Tk nucleus review window with polygon and freehand corrections."""
 
+import json
 import queue
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 import numpy as np
 from PIL import Image, ImageTk
@@ -16,6 +17,7 @@ from .review import ReviewSession
 
 def render_review(session, selected=(), channel="DAPI", show_masks=True):
     """Render masks in original pixel coordinates, including flagged/rejected objects."""
+    _, details = session.counts()
     dapi = session.projections.dapi_max
     if channel == "DAPI + PNC":
         base = np.stack([scale_uint8(session.projections.pnc_max), dapi // 3, dapi], axis=-1)
@@ -25,13 +27,12 @@ def render_review(session, selected=(), channel="DAPI", show_masks=True):
         base = np.repeat(gray[..., None], 3, axis=-1)
     if not show_masks:
         return Image.fromarray(base)
-    _, details = session.counts()
     selected = set(selected)
-    order = sorted(session.masks, key=lambda i: (i in selected, not session.masks[i].rejected, i))
+    order = sorted(session.masks, key=lambda i: (i in selected, not details[i]["rejected"], i))
     flat = base.reshape(-1, 3)
     for identifier in order:
         mask = session.masks[identifier]
-        color = ((180, 180, 180) if mask.rejected else
+        color = ((180, 180, 180) if details[identifier]["rejected"] else
                  (100, 160, 255) if details[identifier]["positive"] else (255, 153, 179))
         edge_color = (110, 255, 110) if identifier in selected else (255, 220, 20) if mask.flagged else color
         idx = mask.pixels
@@ -60,7 +61,7 @@ class ReviewEditor:
         self.window = tk.Toplevel(parent)
         self.window.title(f"Review nuclei - {self.directory.name}")
         self.window.geometry("1180x820")
-        self.window.minsize(950, 720)
+        self.window.minsize(950, 650)
         self.window.protocol("WM_DELETE_WINDOW", self.close)
         self.window.columnconfigure(0, weight=1)
         self.window.rowconfigure(2, weight=1)
@@ -104,10 +105,27 @@ class ReviewEditor:
         self.canvas.bind("<Button-5>", lambda e: self.zoom(0.8, e))
         self.canvas.bind("<ButtonPress-2>", lambda e: self.canvas.scan_mark(e.x, e.y))
         self.canvas.bind("<B2-Motion>", lambda e: self.canvas.scan_dragto(e.x, e.y, gain=1))
-        sidebar = ttk.Frame(self.window, padding=8)
-        sidebar.grid(row=2, column=1, sticky="ns")
+        sidebar_shell = ttk.Frame(self.window)
+        sidebar_shell.grid(row=2, column=1, sticky="ns")
+        sidebar_shell.rowconfigure(0, weight=1)
+        side_canvas = tk.Canvas(sidebar_shell, width=265, highlightthickness=0)
+        side_canvas.grid(row=0, column=0, sticky="ns")
+        side_scroll = ttk.Scrollbar(sidebar_shell, orient="vertical", command=side_canvas.yview)
+        side_scroll.grid(row=0, column=1, sticky="ns")
+        side_canvas.configure(yscrollcommand=side_scroll.set)
+        sidebar = ttk.Frame(side_canvas, padding=8)
+        side_window = side_canvas.create_window(0, 0, window=sidebar, anchor="nw")
+        sidebar.bind("<Configure>", lambda _e: side_canvas.configure(scrollregion=side_canvas.bbox("all")))
+        side_canvas.bind("<Configure>", lambda e: side_canvas.itemconfigure(side_window, width=e.width))
         ttk.Label(sidebar, text="Select nuclei (Ctrl+click for multiple)", wraplength=225).pack(anchor="w")
-        self.listbox = tk.Listbox(sidebar, width=30, height=9, selectmode="extended", exportselection=False)
+        self.queue_filter = tk.StringVar(value="all")
+        queue_filter = ttk.Combobox(sidebar, textvariable=self.queue_filter,
+                                    values=("all", "unreviewed", "uncertain", "flagged", "rejected"),
+                                    state="readonly", width=25)
+        queue_filter.pack(fill="x", pady=3)
+        queue_filter.bind("<<ComboboxSelected>>", lambda _e: self.refresh())
+        self.button(sidebar, "Next in review queue", self.next_in_queue).pack(fill="x")
+        self.listbox = tk.Listbox(sidebar, width=30, height=6, selectmode="extended", exportselection=False)
         self.listbox.pack(fill="x", pady=6)
         self.listbox.bind("<<ListboxSelect>>", self.select_list)
         self.list_ids = []
@@ -118,6 +136,9 @@ class ReviewEditor:
             ("Accept / restore", lambda: self.mark(rejected=False)),
             ("Flag for follow-up", lambda: self.mark(flagged=True)),
             ("Clear flag", lambda: self.mark(flagged=False)),
+            ("Confirm geometry + PNC", lambda: self.mark(reviewed=True)),
+            ("Reviewer / note / PNC call", self.edit_details),
+            ("Add verified reference", self.add_reference),
             ("Delete selected", self.delete), ("Merge selected", self.merge),
             ("Undo (Ctrl+Z)", self.undo), ("Redo (Ctrl+Y)", self.redo),
             ("Reset to original", self.reset), ("Save new revision", self.save),
@@ -273,14 +294,15 @@ class ReviewEditor:
         percent = f"{counts['percentage']:.2f}%" if counts["percentage"] is not None else "N/A"
         self.stats.set(f"PNC+ {counts['n_positive']} / {counts['n_total']} ({percent})   "
                        f"Rejected: {counts['n_bad']}   Flagged: {counts['n_flagged']}   "
-                       f"Cutoff: {self.session.config.positive_threshold} px   "
+                       f"Mode: {self.session.config.pnc_mode}   "
                        f"{'Unsaved changes' if self.session.dirty else 'Saved/original'}")
         self.listbox.delete(0, "end")
-        self.list_ids = sorted(self.session.masks)
+        queue = self.session.review_queue(self.queue_filter.get())
+        self.list_ids = [row["MaskID"] for row in queue]
         for index, identifier in enumerate(self.list_ids):
             mask = self.session.masks[identifier]
-            state = "rejected" if mask.rejected else "PNC+" if details[identifier]["positive"] else "PNC-"
-            self.listbox.insert("end", f"{identifier}: {state}{' [flag]' if mask.flagged else ''}")
+            state = "excluded" if details[identifier]["rejected"] else "PNC+" if details[identifier]["positive"] else "PNC-"
+            self.listbox.insert("end", f"{identifier}: {state}{' [flag]' if mask.flagged else ''}{' [done]' if mask.reviewed else ''}")
             if identifier in self.selected:
                 self.listbox.selection_set(index)
         if len(self.selected) == 1:
@@ -288,8 +310,12 @@ class ReviewEditor:
             mask = self.session.masks[identifier]
             self.detail.set(f"Nucleus {identifier}\nArea: {len(mask.pixels)} px\n"
                             f"Positive PNC pixels: {details[identifier]['positive_pixels']}\n"
+                            f"PNC spots: {details[identifier]['spots']}\n"
+                            f"PNC call: {'automatic' if mask.pnc_override is None else 'manual positive' if mask.pnc_override else 'manual negative'}\n"
+                            f"{'Verified' if mask.reviewed else 'Awaiting verification'}\n"
                             f"{'Manually edited' if mask.edited else 'Original boundary'}\n"
-                            "Flagging keeps it counted; rejecting excludes it.")
+                            + "\n".join(next((r["reasons"] for r in self.session.review_queue("all")
+                                               if r["MaskID"] == identifier), [])))
         else:
             self.detail.set(f"{len(self.selected)} nuclei selected. Ctrl+click to select multiple.\n"
                             "Green = selected; yellow = flagged; gray = rejected.")
@@ -302,6 +328,88 @@ class ReviewEditor:
                 self.selected = chosen
                 self.refresh()
 
+    def next_in_queue(self):
+        if self.busy or self.points:
+            return
+        queue = self.session.review_queue(self.queue_filter.get())
+        if not queue:
+            self.status.set("No nuclei in this review queue.")
+            return
+        ids = [row["MaskID"] for row in queue]
+        current = next(iter(self.selected)) if len(self.selected) == 1 else None
+        identifier = ids[(ids.index(current) + 1) % len(ids)] if current in ids else ids[0]
+        self.selected = {identifier}
+        self.scale = max(1, self.scale)
+        self.refresh()
+        yy, xx = np.unravel_index(self.session.masks[identifier].pixels, self.session.shape)
+        h, w = self.session.shape
+        self.canvas.xview_moveto(max(0, (xx.mean() * self.scale - self.canvas.winfo_width() / 2) / (w * self.scale)))
+        self.canvas.yview_moveto(max(0, (yy.mean() * self.scale - self.canvas.winfo_height() / 2) / (h * self.scale)))
+
+    def edit_details(self):
+        if self.busy or self.points or len(self.selected) != 1:
+            messagebox.showinfo("Review details", "Select exactly one nucleus and finish any outline first.", parent=self.window)
+            return
+        identifier = next(iter(self.selected))
+        mask = self.session.masks[identifier]
+        dialog = tk.Toplevel(self.window)
+        dialog.title(f"Review details - nucleus {identifier}")
+        dialog.transient(self.window)
+        dialog.grab_set()
+        reviewer = tk.StringVar(value=self.session.reviewer)
+        call = tk.StringVar(value="automatic" if mask.pnc_override is None else "positive" if mask.pnc_override else "negative")
+        ttk.Label(dialog, text="Reviewer name").pack(anchor="w", padx=10, pady=5)
+        ttk.Entry(dialog, textvariable=reviewer, width=45).pack(padx=10)
+        ttk.Label(dialog, text="PNC call (overrides automatic classification)").pack(anchor="w", padx=10, pady=5)
+        ttk.Combobox(dialog, textvariable=call, values=("automatic", "positive", "negative"), state="readonly").pack(padx=10)
+        ttk.Label(dialog, text="Reason / note").pack(anchor="w", padx=10, pady=5)
+        notes = tk.Text(dialog, height=5, width=50)
+        notes.pack(padx=10)
+        notes.insert("1.0", mask.note)
+
+        def apply():
+            self.session.reviewer = reviewer.get().strip()
+            self.action(lambda: self.session.mark([identifier], note=notes.get("1.0", "end-1c"),
+                        pnc_override={"automatic": None, "positive": True, "negative": False}[call.get()]))
+            dialog.destroy()
+        ttk.Button(dialog, text="Apply (then confirm after checking)", command=apply).pack(pady=10)
+
+    def add_reference(self):
+        if self.busy or self.points:
+            return
+        from .benchmark import add_reference, projection_digest
+
+        reviewer = simpledialog.askstring("Verified reference", "Reviewer name", initialvalue=self.session.reviewer,
+                                          parent=self.window)
+        if not reviewer:
+            return
+        group = simpledialog.askstring("Verified reference", "Specimen/acquisition group (kept within one split)", parent=self.window)
+        if not group:
+            return
+        split = simpledialog.askstring("Verified reference", "Split: validation or test", initialvalue="test", parent=self.window)
+        if not split:
+            return
+        folder = filedialog.askdirectory(title="Reference-set folder", mustexist=False, parent=self.window)
+        if not folder:
+            return
+        self.session.reviewer = reviewer.strip()
+        self.busy = True
+        for widget in self.buttons:
+            widget.configure(state="disabled")
+        self.status.set("Saving and registering a verified reference...")
+
+        def worker():
+            try:
+                path = add_reference(self.session, folder, split=split.strip(), group=group)
+                document = json.loads(path.read_text(encoding="utf-8"))
+                identity = projection_digest(self.session.projections)
+                case = next(case for case in document["cases"] if case["image_sha256"] == identity)
+                revision = path.parent / case["review_directory"].replace("\\", "/")
+                self.events.put(("reference", (revision, self.session.counts()[0], path)))
+            except Exception as exc:
+                self.events.put(("error", str(exc)))
+        threading.Thread(target=worker, daemon=True).start()
+
     def render(self):
         image = render_review(self.session, self.selected, self.channel.get(), self.show_masks.get())
         w, h = image.size
@@ -313,6 +421,11 @@ class ReviewEditor:
         self.canvas.tag_lower("background")
         self.canvas.configure(scrollregion=(0, 0, *size))
         self.canvas.delete("ids")
+        self.canvas.delete("spots")
+        if self.session.config.pnc_mode == "spots" and self.show_masks.get():
+            for spot in self.session._spot_rows:
+                x, y = (spot["CentroidX"] - 1) * self.scale, (spot["CentroidY"] - 1) * self.scale
+                self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, outline="#40ff80", width=2, tags="spots")
         if self.show_ids.get():
             for identifier, mask in self.session.masks.items():
                 yy, xx = np.unravel_index(mask.pixels, self.session.shape)
@@ -386,10 +499,11 @@ class ReviewEditor:
             self.busy = False
             for widget in self.buttons:
                 widget.configure(state="normal")
-            if kind == "saved":
-                directory, stats = payload
+            if kind in ("saved", "reference"):
+                directory, stats = payload[:2]
                 self.directory = directory
-                self.status.set(f"Saved new revision: {directory}")
+                self.status.set(f"Verified reference registered: {payload[2]}" if kind == "reference"
+                                else f"Saved new revision: {directory}")
                 self.refresh()
                 if self.on_saved:
                     self.on_saved(directory, stats)

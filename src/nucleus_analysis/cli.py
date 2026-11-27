@@ -10,9 +10,10 @@ from pathlib import Path
 import numpy as np
 
 from .config import AnalysisConfig
-from .imaging import read_image
 from .output import export_result, write_csv
+from .phenotype import segmentation_config
 from .pipeline import analyze
+from .projection_cache import read_cached
 from .segmentation import Segmenter, cache_fingerprint, file_sha256, load_masks, save_masks
 
 
@@ -29,13 +30,18 @@ def build_parser():
     parser.add_argument("--cache", type=Path, help="Cache candidate masks; thresholds can then change cheaply")
     choices = {"backend": ["sam2", "sam3", "watershed"], "threshold_mode": ["local", "global"],
                "quality_filter": ["none", "legacy-svm"], "sam2_model": ["tiny", "small", "base_plus", "large"],
-               "device": ["cpu", "cuda", "mps"]}
+               "device": ["cpu", "cuda", "mps"], "border_policy": ["include", "exclude"],
+               "pnc_mode": ["pixels", "spots"]}
     types = {"min_nucleus_area": int, "max_nucleus_area": int, "positive_threshold": int,
              "image_threshold": float, "neighborhood_size": int, "dapi_channel": int,
              "pnc_channel": int, "time_index": int, "position_index": int,
              "overlap_threshold": float, "checkpoint": str, "points_per_side": int,
              "points_per_batch": int, "score_threshold": float, "stability_threshold": float,
-             "watershed_min_distance": int, "watershed_sigma": float, "sam3_prompt": str}
+             "watershed_min_distance": int, "watershed_sigma": float, "sam3_prompt": str,
+             "min_nucleus_area_um2": float, "max_nucleus_area_um2": float,
+             "pixel_size_x_um": float, "pixel_size_y_um": float, "border_margin": int,
+             "min_spot_count": int, "spot_min_area": int, "spot_max_area": int,
+             "spot_min_distance": int, "spot_background_sigma": float, "review_positive_margin": int}
     for name, allowed in choices.items():
         parser.add_argument("--" + name.replace("_", "-"), choices=allowed)
     for name, kind in types.items():
@@ -58,7 +64,7 @@ def discover_inputs(path, recursive=False):
 
 
 def run_batch(paths, config, output, *, axes=None, masks_path=None, cache=None,
-              progress=None, cancelled=None):
+              progress=None, cancelled=None, stage_progress=None, config_for_path=None):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     segmenter = Segmenter(config)
@@ -71,16 +77,26 @@ def run_batch(paths, config, output, *, axes=None, masks_path=None, cache=None,
         # Distinguish same-named files from different folders and extensions.
         identifier = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:10]
         destination = output / f"{path.stem}-{identifier}"
+        current = config_for_path(path) if config_for_path else config
+
+        def stage(name):
+            if stage_progress:
+                stage_progress(path, name)
+
         try:
-            projections = read_image(path, config, axes=axes)
+            stage("Loading image")
+            projections = read_cached(path, current, axes=axes, cache=cache)
+            effective = segmentation_config(current, projections.metadata)
+            segmenter.config = effective
             candidates = None
-            provenance = {"kind": "generated", "backend": config.backend}
+            provenance = {"kind": "generated", "backend": current.backend}
+            stage("Finding nuclei")
             if masks_path:
                 candidates = load_masks(masks_path, projections.dapi_max.shape)
                 provenance = {"kind": "imported", "path": str(Path(masks_path).resolve()),
                               "sha256": file_sha256(masks_path)}
             elif cache:
-                fingerprint = cache_fingerprint(projections.dapi_max, config)
+                fingerprint = cache_fingerprint(projections.dapi_max, effective)
                 cache_file = Path(cache) / f"{fingerprint}.npz"
                 if cache_file.is_file():
                     with np.load(cache_file, allow_pickle=False) as data:
@@ -92,15 +108,21 @@ def run_batch(paths, config, output, *, axes=None, masks_path=None, cache=None,
                     cache_file.parent.mkdir(parents=True, exist_ok=True)
                     save_masks(cache_file, candidates, projections.dapi_max.shape, fingerprint)
                 provenance.update(fingerprint=fingerprint, cache=str(cache_file.resolve()))
-            result = analyze(projections, config, masks=candidates, segmenter=segmenter)
-            if not masks_path and config.checkpoint and config.backend.startswith("sam"):
-                provenance["checkpoint_sha256"] = file_sha256(config.checkpoint)
+            if candidates is None:
+                candidates = segmenter.generate(projections.dapi_max)
+            stage("Measuring PNC")
+            result = analyze(projections, current, masks=candidates, segmenter=segmenter)
+            if not masks_path and current.checkpoint and current.backend.startswith("sam"):
+                provenance["checkpoint_sha256"] = file_sha256(current.checkpoint)
+            stage("Saving results")
             export_result(result, destination, provenance=provenance)
             row = {"Filename": str(path), **result.basic_stats, "Output": str(destination)}
             summary.append(row)
+            stage("Done")
             if progress:
                 progress(path, result.basic_stats, destination, None)
         except Exception as exc:
+            stage("Error")
             errors.append({"Filename": str(path), "error": f"{type(exc).__name__}: {exc}"})
             if progress:
                 progress(path, None, None, str(exc))
@@ -115,9 +137,9 @@ def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.gui:
-        from .gui import main as gui_main
+        from .desktop_launcher import main as gui_main
 
-        gui_main()
+        gui_main([])
         return 0
     try:
         config = AnalysisConfig.load(args.config) if args.config else AnalysisConfig()

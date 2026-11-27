@@ -1,0 +1,15 @@
+{
+  "python": {
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261124/cpython-3.12.16%2B20261124-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+    "sha256": "96694b50dcfde13d56e40346ddaa552a9cd650290e9b933cecf83c1d82226960"
+  },
+  "inno": {
+    "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe",
+    "sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
+  },
+  "sam2": {
+    "url": "https://codeload.github.com/facebookresearch/sam2/zip/2b90b9f5ceec907a1c18123530e92e794ad901a4",
+    "sha256": "fe93082a71a885a427894b1eab76341768781b6b58a298a0717e03862097d137",
+    "revision": "2b90b9f5ceec907a1c18123530e92e794ad901a4"
+  }
+}
