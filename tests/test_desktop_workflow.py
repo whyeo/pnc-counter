@@ -1,9 +1,12 @@
 """Desktop regressions exercise real selection callbacks and asynchronous batches."""
 
 import hashlib
+import subprocess
+import sys
 import time
 import tkinter as tk
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -46,12 +49,8 @@ def pump(root, predicate, seconds=10):
 
 
 @pytest.fixture
-def app(tmp_path):
-    try:
-        root = tk.Tk()
-    except tk.TclError:
-        pytest.skip("Tk display unavailable")
-    root.withdraw()
+def app(tmp_path, tk_window):
+    root = tk_window
     app = CounterApp(root, preference_file=tmp_path / "prefs.json", initialize=False)
     app.hardware = {"device": "cpu", "name": "Test CPU", "sam2_installed": False,
                     "runtime": runtime_signature()}
@@ -283,19 +282,25 @@ def test_redetect_then_cached_launch_skips_probe(app, monkeypatch):
     app.redetect_hardware()
     pump(app.root, lambda: not app.setup_busy)
     assert len(calls) == 1
-    root = tk.Toplevel(app.root)
-    # CounterApp requires a root with Tcl interpreter; another hidden Tk is fine.
-    root.destroy()
-    root = tk.Tk()
-    root.withdraw()
-    try:
-        second = CounterApp(root, preference_file=app.preference_file)
-        root.update()
-        assert second.hardware["name"] == "New GPU" and len(calls) == 1
-    finally:
-        for token in root.tk.call("after", "info"):
-            root.tk.call("after", "cancel", token)
-        root.destroy()
+    # A relaunch owns a fresh Tcl interpreter in a fresh process. Two Tk roots
+    # in this process share event machinery and can fail to initialize on Windows.
+    code = "\n".join([
+        "import sys, tkinter as tk",
+        "from unittest.mock import patch",
+        f"sys.path.insert(0, {str(Path(__file__).resolve().parents[1] / 'src')!r})",
+        "from nucleus_analysis.gui import CounterApp",
+        "root = tk.Tk(); root.withdraw()",
+        "with patch('nucleus_analysis.gui.detect_hardware') as detect:",
+        f"    second = CounterApp(root, preference_file={str(app.preference_file)!r})",
+        "    root.after(150, root.quit)",
+        "    root.mainloop()",
+        "    assert second.hardware['name'] == 'New GPU'",
+        "    assert not second.setup_busy",
+        "    detect.assert_not_called()",
+        "    assert 'torch' not in sys.modules",
+        "root.destroy()",
+    ])
+    subprocess.run([sys.executable, "-c", code], check=True, capture_output=True, text=True, timeout=20)
 
 
 def test_gui_batch_retains_rows_and_remembers_ambiguous_mapping(app, tmp_path, monkeypatch):

@@ -4,7 +4,6 @@ import json
 import sys
 import threading
 import time
-import tkinter as tk
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -142,12 +141,8 @@ def test_process_cancellation_stops_only_its_child(tmp_path):
 
 
 @pytest.fixture
-def wizard(tmp_path, monkeypatch):
-    try:
-        root = tk.Tk()
-    except tk.TclError:
-        pytest.skip("Tk display unavailable")
-    root.withdraw()
+def wizard(tmp_path, monkeypatch, tk_window):
+    root = tk_window
     monkeypatch.setattr("nucleus_analysis.setup_wizard.probe_nvidia", lambda: {
         "cuda_ready": True, "message": "Test GPU", "cuda_version": "12.8"})
     launched = []
