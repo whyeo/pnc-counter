@@ -268,7 +268,11 @@ MATLAB code, JVM, neural weights, or bundled PyTorch. Distribute it with the
 appropriate dependencies and a separately downloaded checkpoint for offline use.
 The repository also builds a Windows installer with a private Python runtime:
 `python tools/build_windows.py --bootstrap-compiler`. A manually triggered
-**Windows installer** GitHub Actions workflow builds the same installer.
+**Windows installer** GitHub Actions workflow builds the same installer, verifies
+installation and a sample ND2 analysis on a MATLAB-free Windows runner, and
+attaches versioned assets to matching version-tag releases. Manual runs prepare
+drafts. See the [release guide](docs/releases.md) for source-commit provenance,
+checksums, the local-build fallback and website download links.
 CI tests the base package on Windows/Linux with Python 3.10/3.12; real microscopy
 data tests skip when private local data are absent. The Windows installer is
 unsigned; code signing and a separate clean Windows machine test remain release steps.

@@ -1,0 +1,6 @@
+{
+  "url": "https://github.com/tlambert03/nd2/releases/download/test-data/dims_c2y32x32.nd2",
+  "sha256": "7319df4f83c16f33f7b2b2f1af21c8af4f3395d8ad29a345967daa28c9592739",
+  "description": "Public two-channel ND2 reader fixture; functional test, not an accuracy reference.",
+  "source": "https://github.com/tlambert03/nd2/blob/main/scripts/samples.sha256"
+}

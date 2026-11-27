@@ -1,30 +1,78 @@
 name: Windows installer
 on:
+  push:
+    tags: ['v[0-9]*.[0-9]*.[0-9]*']
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2025
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
+      - name: Validate release version
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          python -c "import os; from tools.release_metadata import project_version,validate_tag; v=project_version('.'); t=os.environ.get('TAG'); validate_tag(t,v) if t else None; print('version='+v)" >> $env:GITHUB_OUTPUT
       - run: python -m pip install -e ".[dev]" -c installer/windows/constraints.txt
       - run: python -m ruff check src tests tools
       - run: python -m pytest
-      - run: python tools/build_windows.py --bootstrap-compiler
-      - name: Record installer checksum
+      - name: Build from committed Python source
         shell: pwsh
         run: |
-          Get-ChildItem dist/PNC-Counter-*-Setup-x64.exe | ForEach-Object {
-            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLower()
-            "$hash  $($_.Name)"
-          } | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          python tools/build_windows.py --bootstrap-compiler --require-clean --tag "v${{ steps.version.outputs.version }}"
+      - name: Install and analyze ND2 without MATLAB
+        shell: pwsh
+        run: |
+          python tools/verify_windows_installer.py "dist/PNC-Counter-${{ steps.version.outputs.version }}-Setup-x64.exe" --require-no-matlab --setup-sam --expected-commit $env:GITHUB_SHA
+          Copy-Item -LiteralPath validation/local/release-smoke/verification.json -Destination dist/verification.json
       - uses: actions/upload-artifact@v4
         with:
-          name: PNC-Counter-Windows-installer
+          name: PNC-Counter-v${{ steps.version.outputs.version }}
           path: |
             dist/PNC-Counter-*-Setup-x64.exe
             dist/SHA256SUMS.txt
+            dist/build-info.json
+            dist/verification.json
+            dist/release-notes.md
+      - name: Prepare or publish the GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          $tag = "v$env:VERSION"
+          $assets = @("dist/PNC-Counter-$env:VERSION-Setup-x64.exe", "dist/SHA256SUMS.txt", "dist/build-info.json", "dist/verification.json")
+          $existing = gh release view $tag --json isDraft,targetCommitish 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            $release = $existing | ConvertFrom-Json
+            if (-not $release.isDraft) { throw "Stable release $tag already exists; its assets will not be overwritten." }
+            if ($release.targetCommitish -ne $env:GITHUB_SHA) { throw "Existing draft targets a different commit; inspect it before replacing assets." }
+            gh release upload $tag @assets --clobber
+            if ($LASTEXITCODE -ne 0) { throw "Release upload failed" }
+            gh release edit $tag --notes-file dist/release-notes.md
+            if ($env:EVENT_NAME -eq 'push') { gh release edit $tag --draft=false --latest }
+          } else {
+            $options = @('--target', $env:GITHUB_SHA, '--title', "PNC Counter $tag", '--notes-file', 'dist/release-notes.md')
+            if ($env:EVENT_NAME -eq 'push') { $options += @('--verify-tag', '--latest') }
+            else { $options += '--draft' }
+            gh release create $tag @assets @options
+          }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub Release operation failed" }

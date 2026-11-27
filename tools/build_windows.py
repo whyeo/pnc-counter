@@ -15,6 +15,14 @@ import tarfile
 import urllib.request
 from pathlib import Path
 
+from release_metadata import (
+    INSTALLER_PATTERN,
+    project_version,
+    source_identity,
+    validate_tag,
+    write_release_assets,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build/windows"
 LOCK = json.loads((ROOT / "installer/windows/build-lock.json").read_text(encoding="utf-8"))
@@ -68,9 +76,15 @@ def main():
     parser.add_argument("--inno", type=Path, help="Path to ISCC.exe")
     parser.add_argument("--bootstrap-compiler", action="store_true")
     parser.add_argument("--prepare-only", action="store_true", help="Prepare/test runtime without compiling Setup")
+    parser.add_argument("--require-clean", action="store_true", help="Reject an uncommitted release source tree")
+    parser.add_argument("--tag", help="Validate a release tag against pyproject.toml")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Build the Windows installer on Windows")
+    version = project_version(ROOT)
+    if args.tag:
+        validate_tag(args.tag, version)
+    identity = source_identity(ROOT, require_clean=args.require_clean)
     BUILD.mkdir(parents=True, exist_ok=True)
     archive = fetch("python", "python-runtime.tar.gz")
     unpacked = BUILD / "portable"
@@ -81,7 +95,9 @@ def main():
     constraints = ROOT / "installer/windows/constraints.txt"
     wheelhouse = BUILD / "wheels"
     run([sys.executable, "-m", "build", "--no-isolation", "--wheel", "--outdir", wheelhouse])
-    app_wheel = max(wheelhouse.glob("nucleus_analysis-*.whl"), key=lambda p: p.stat().st_mtime)
+    app_wheel = wheelhouse / f"nucleus_analysis-{version}-py3-none-any.whl"
+    if not app_wheel.is_file():
+        raise ValueError(f"Expected application wheel was not built: {app_wheel.name}")
     run([python, "-I", "-m", "pip", "install", "--only-binary=:all:", "--constraint", constraints,
          app_wheel, "setuptools>=77,<85", "wheel>=0.45,<1"])
     # Local iteration can rebuild the same application version; always refresh
@@ -97,8 +113,9 @@ def main():
          "--wheel-dir", sam_wheels, source], env=environment)
     run([python, "-I", "-m", "pip", "wheel", "--constraint", constraints,
          "--wheel-dir", sam_wheels, "hydra-core", "iopath", "tqdm"])
-    version = app_wheel.name.split("-")[1]
     manifest = {"schema": 1, "application_version": version, "python": LOCK["python"],
+                "source": identity,
+                "matlab": {"used_for_build": False, "version": None, "compiler_license_required": False},
                 "sam2_source": LOCK["sam2"],
                 "wheels": {p.name: digest(p) for p in sam_wheels.glob("*.whl")}}
     (runtime / "pnc-runtime.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -119,7 +136,9 @@ def main():
         parser.error("Install Inno Setup and pass --inno PATH/ISCC.exe, or use --bootstrap-compiler")
     run([compiler, "/Qp", f"/DAppVersion={version}", f"/DRuntimeDir={runtime}", f"/DOutputDir={ROOT / 'dist'}",
          ROOT / "installer/windows/pnc-counter.iss"])
-    print(f"Installer: {ROOT / 'dist' / f'PNC-Counter-{version}-Setup-x64.exe'}", flush=True)
+    installer = ROOT / "dist" / INSTALLER_PATTERN.format(version=version)
+    write_release_assets(installer, manifest)
+    print(f"Installer: {installer}", flush=True)
 
 
 if __name__ == "__main__":

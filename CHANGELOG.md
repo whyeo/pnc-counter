@@ -2,6 +2,9 @@
 
 ## Windows installer and guided setup (v0.6.0)
 
+- Added source-commit build provenance, release checksums and version-tagged
+  GitHub assets, gated on an installed-app ND2 export check without MATLAB.
+
 - Added a per-user Windows Setup executable with private portable Python/Tk,
   Start menu/optional desktop shortcuts, and an uninstaller that preserves user data.
 - Added a first-run wizard for CPU/NVIDIA selection, PyTorch installation, bundled

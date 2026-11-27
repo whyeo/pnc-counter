@@ -54,6 +54,12 @@ Alternatively install Inno Setup yourself and supply
 prepare and smoke-check the private runtime without compiling the installer.
 The compiler bootstrap is a developer build step, not something end users run.
 
+For release builds, commit the source and add `--require-clean --tag v0.6.0`.
+This embeds the source commit/tree and emits `SHA256SUMS.txt`, `build-info.json`
+and short release notes alongside the versioned installer. The existing GitHub
+workflow builds on matching version tags and verifies setup/ND2 exports before
+attaching the release assets. See [release preparation](releases.md).
+
 The builder verifies pinned SHA-256 hashes for the portable CPython distribution,
 official SAM source and compiler. Base scientific versions are constrained to
 the validated versions. It converts SAM to a pure Python wheel with the optional
