@@ -58,7 +58,7 @@ def main():
     assert profile["hardware"]["device"] == args.mode
     python = wizard.ready_python
     for token in root.tk.call("after", "info"):
-        root.after_cancel(token)
+        root.tk.call("after", "cancel", token)
     root.destroy()
     # Fresh process verifies the saved launch path without importing Torch.
     check = "\n".join([

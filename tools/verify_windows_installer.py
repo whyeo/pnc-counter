@@ -112,7 +112,7 @@ def installed_analysis(runtime, preferences, sample, output, report, expected_co
               "installed_module": str(Path(nucleus_analysis.__file__).resolve())}
     report.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     for token in root.tk.call("after", "info"):
-        root.after_cancel(token)
+        root.tk.call("after", "cancel", token)
     root.destroy()
 
 

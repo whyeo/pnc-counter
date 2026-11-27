@@ -56,8 +56,13 @@ def app(tmp_path):
     app.hardware = {"device": "cpu", "name": "Test CPU", "sam2_installed": False,
                     "runtime": runtime_signature()}
     yield app
+    app.cancel.set()
     for token in root.tk.call("after", "info"):
-        root.after_cancel(token)
+        # Native ttk timer scripts are Tcl lists, not Python callback names.
+        root.tk.call("after", "cancel", token)
+    for thread in app.background_threads:
+        thread.join(timeout=10)
+        assert not thread.is_alive()
     root.destroy()
 
 
@@ -289,7 +294,7 @@ def test_redetect_then_cached_launch_skips_probe(app, monkeypatch):
         assert second.hardware["name"] == "New GPU" and len(calls) == 1
     finally:
         for token in root.tk.call("after", "info"):
-            root.after_cancel(token)
+            root.tk.call("after", "cancel", token)
         root.destroy()
 
 
@@ -311,6 +316,25 @@ def test_gui_batch_retains_rows_and_remembers_ambiguous_mapping(app, tmp_path, m
     app.start()
     pump(app.root, lambda: app.status.get().startswith("Finished:"))
     assert len(calls) == 1
+
+
+def test_close_waits_for_background_preview_and_stops_with_active_timer(app, monkeypatch):
+    import threading
+
+    release = threading.Event()
+    destroyed = []
+    monkeypatch.setattr(app.root, "destroy", lambda: destroyed.append(True))
+    thread = app.start_background(lambda: release.wait(5))
+    app.set_activity(True)
+    try:
+        app.close()
+        assert app.closing and app.cancel.is_set()
+        assert not destroyed
+    finally:
+        release.set()
+        thread.join(timeout=5)
+    pump(app.root, lambda: bool(destroyed))
+    # Leave the native progressbar timer running to exercise fixture cleanup.
 
 
 def test_download_checksum_failure_and_existing_file(tmp_path, monkeypatch):

@@ -56,7 +56,7 @@ def main():
     (args.output / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
     for token in root.tk.call("after", "info"):
-        root.after_cancel(token)
+        root.tk.call("after", "cancel", token)
     root.destroy()
 
 

@@ -47,6 +47,7 @@ class CounterApp:
         self.events = queue.Queue()
         self.cancel = threading.Event()
         self.worker = None
+        self.background_threads = []
         self.preparing = self.setup_busy = self.download_busy = self.closing = False
         self.hardware = cached_hardware(self.preferences)
         self.preview_image = None
@@ -163,6 +164,15 @@ class CounterApp:
     def busy(self):
         return self.preparing or bool(self.worker and self.worker.is_alive())
 
+    def start_background(self, target):
+        # Keep the window alive until workers have released their references to
+        # its Tk variables and images. Tk objects must be destroyed on Tk's thread.
+        self.background_threads = [t for t in self.background_threads if t.is_alive()]
+        thread = threading.Thread(target=target, daemon=True)
+        self.background_threads.append(thread)
+        thread.start()
+        return thread
+
     def persist(self):
         self.preferences.update(output=self.output.get(), device_choice=self.device_choice.get(),
                                 manual_channels=self.manual_channels.get())
@@ -195,7 +205,7 @@ class CounterApp:
                 self.events.put(("hardware", detect_hardware()))
             except Exception as exc:
                 self.events.put(("setup_error", str(exc)))
-        threading.Thread(target=work, daemon=True).start()
+        self.start_background(work)
 
     def select_files(self):
         paths = filedialog.askopenfilenames(filetypes=[("Microscopy images", "*.nd2 *.ND2 *.tif *.tiff *.TIF *.TIFF")])
@@ -236,7 +246,7 @@ class CounterApp:
                     except (ValueError, OSError) as exc:
                         self.events.put(("input_error", str(exc)))
                 self.events.put(("scan_done", None))
-            threading.Thread(target=scan, daemon=True).start()
+            self.start_background(scan)
 
     def add_image(self, path):
         path = Path(path).resolve()
@@ -452,7 +462,7 @@ class CounterApp:
                 except Exception as exc:
                     image = str(exc)
                 self.events.put(("dialog_preview", (token, image_label, image)))
-            threading.Thread(target=load, daemon=True).start()
+            self.start_background(load)
 
         def apply():
             try:
@@ -487,7 +497,7 @@ class CounterApp:
                 except Exception as exc:
                     errors.append((path, str(exc)))
             self.events.put(("prepared", (paths, metadata, errors, analyze)))
-        threading.Thread(target=work, daemon=True).start()
+        self.start_background(work)
 
     def finish_prepare(self, payload):
         paths, metadata, errors, analyze = payload
@@ -629,8 +639,7 @@ class CounterApp:
                 self.events.put(("error", str(exc)))
             finally:
                 self.events.put(("done", None))
-        self.worker = threading.Thread(target=work, daemon=True)
-        self.worker.start()
+        self.worker = self.start_background(work)
 
     def progress_text(self, path, stage):
         elapsed = max(0, time.monotonic() - self.started_at) if self.started_at else 0
@@ -778,7 +787,7 @@ class CounterApp:
             except Exception as exc:
                 image = f"Preview unavailable: {exc}"
             self.events.put(("preview", (token, self.preview, image)))
-        threading.Thread(target=load, daemon=True).start()
+        self.start_background(load)
 
     def download_model(self):
         from .setup_model import download_checkpoint
@@ -799,7 +808,7 @@ class CounterApp:
                 self.events.put(("download_done", str(target)))
             except Exception as exc:
                 self.events.put(("download_error", str(exc)))
-        threading.Thread(target=work, daemon=True).start()
+        self.start_background(work)
 
     def open_results(self):
         path = Path(self.output.get()).resolve()
@@ -856,7 +865,7 @@ class CounterApp:
                 editor.close()
                 if editor.window.winfo_exists():
                     return
-        if self.busy():
+        if self.busy() or any(t.is_alive() for t in self.background_threads):
             self.closing = True
             self.cancel.set()
             self.status.set("Finishing the current task before closing…")

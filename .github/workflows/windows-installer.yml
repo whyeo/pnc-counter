@@ -32,7 +32,7 @@ jobs:
           python -c "import os; from tools.release_metadata import project_version,validate_tag; v=project_version('.'); t=os.environ.get('TAG'); validate_tag(t,v) if t else None; print('version='+v)" >> $env:GITHUB_OUTPUT
       - run: python -m pip install -e ".[dev]" -c installer/windows/constraints.txt
       - run: python -m ruff check src tests tools
-      - run: python -m pytest
+      - run: python -m pytest -W error::pytest.PytestUnraisableExceptionWarning
       - name: Build from committed Python source
         shell: pwsh
         run: |

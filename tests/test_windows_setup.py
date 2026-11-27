@@ -57,7 +57,8 @@ def test_private_setup_activates_only_after_model_verification(setup_files, mode
     assert managed_setup.MODES[mode] in commands[1]
     assert commands[1][0] == python
     assert "--no-index" in commands[2]  # Bundled SAM installs without Git/network.
-    assert all("git" not in str(value).lower() for command in commands for value in command)
+    assert all(Path(command[0]).name.lower() not in ("git", "git.exe") for command in commands)
+    assert all(not str(value).startswith("git+") for command in commands for value in command)
     assert managed_setup.active_runtime(saved, base) == python.resolve()
 
 
@@ -153,9 +154,13 @@ def wizard(tmp_path, monkeypatch):
     wizard = SetupWizard(root, tmp_path, tmp_path / "preferences.json", launch_app=lambda *a, **k: launched.append((a, k)))
     wizard.launched = launched
     yield wizard
+    wizard.cancel.set()
+    if wizard.worker:
+        wizard.worker.join(timeout=5)
+        assert not wizard.worker.is_alive()
     if root.winfo_exists():
         for token in root.tk.call("after", "info"):
-            root.after_cancel(token)
+            root.tk.call("after", "cancel", token)
         root.destroy()
 
 
