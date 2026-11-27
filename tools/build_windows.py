@@ -94,7 +94,9 @@ def main():
     runtime = python.parent
     constraints = ROOT / "installer/windows/constraints.txt"
     wheelhouse = BUILD / "wheels"
-    run([sys.executable, "-m", "build", "--no-isolation", "--wheel", "--outdir", wheelhouse])
+    # Let build install pyproject.toml's build requirements in an isolated env.
+    # Clean Python 3.12 hosts need not have setuptools or wheel preinstalled.
+    run([sys.executable, "-m", "build", "--wheel", "--outdir", wheelhouse])
     app_wheel = wheelhouse / f"nucleus_analysis-{version}-py3-none-any.whl"
     if not app_wheel.is_file():
         raise ValueError(f"Expected application wheel was not built: {app_wheel.name}")
