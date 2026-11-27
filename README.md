@@ -1,26 +1,55 @@
-# Nucleus Analysis / PNC Counter
+# PNC Counter
 
 Python application for segmenting DAPI-labelled nuclei and counting PNC-positive
 nuclei in Nikon ND2 and multichannel TIFF images. Includes a desktop app, batch
 CLI, and Python API. No MATLAB, Java, Bio-Formats, pandas, or web server is needed.
 
-**Accuracy status:** replaying the two existing MATLAB segmentations reproduces
-the recorded counts exactly (67/76 and 42/45). SAM 2.1 is a new segmentation
-backend and must be validated against reviewed masks before claiming improved
-biological accuracy. See [validation](docs/validation.md).
+**Windows release:** [Download PNC Counter v0.6.0](https://github.com/whyeo/pnc-counter/releases/download/v0.6.0/PNC-Counter-0.6.0-Setup-x64.exe)
+or visit [Releases](https://github.com/whyeo/pnc-counter/releases) for release notes,
+checksums, and verification reports. The installer includes Python; MATLAB is not required.
+
+**Accuracy status:** automatic PNC classification still needs calibration and
+manual review. HeLa control-folder testing found substantial positive calls in
+the negative group and very few in the small-PNC group. SAM finds nucleus
+boundaries; a separate threshold rule makes the PNC calls. Successful installation
+and analysis tests do not establish biological accuracy.
+
+Replaying the two existing MATLAB segmentations reproduces the recorded counts
+exactly (67/76 and 42/45), but that checks migration parity on those examples.
+SAM 2.1 segmentation and the PNC classification rule require validation against
+reviewed controls before claiming improved accuracy. See [validation](docs/validation.md).
 
 ## Install
 
 ### Windows installer (recommended for desktop users)
 
-Double-click `PNC-Counter-0.6.0-Setup-x64.exe`. Python and the base image tools are
-included. On first launch, the guided setup recommends CPU or NVIDIA GPU support,
-installs PyTorch and official SAM 2.1 in a separate private environment, downloads
-Tiny/Small weights, and tests real model inference before saving the setup.
+For **64-bit Windows 10/11**:
+
+1. [Download the installer](https://github.com/whyeo/pnc-counter/releases/download/v0.6.0/PNC-Counter-0.6.0-Setup-x64.exe)
+   and run it. Python and the base image tools are included.
+2. Open **PNC Counter** from the Start menu and complete the guided setup.
+   Choose NVIDIA GPU when a compatible driver is detected, or CPU. CPU analysis
+   can be substantially slower. Choose the same model when comparing results.
+3. Allow the first-time setup to install PyTorch, official SAM 2.1, and the
+   selected model weights. This needs internet access and may take several minutes.
+   Setup tests actual model inference before saving the configuration.
+4. Add images or drag in a folder, check the channel preview, choose where to
+   save results, and click **Analyze images**. Review the detections before using
+   the counts.
+
 Users do not need PowerShell, a system Python, Git or a compiler. Later launches
-reuse the saved setup. **Set up / repair SAM** and a Start menu setup shortcut
-reopen the wizard. See the [Windows installation guide](docs/windows-installer.md)
-for downloads, prerequisites, repair, uninstall behavior, and build instructions.
+reuse the saved setup and can analyze offline. **Advanced settings → Set up / repair SAM**
+and the Start menu setup shortcut reopen the wizard. After a driver or hardware
+change, use **Advanced settings → Redetect hardware**.
+
+The installer is unsigned, so Windows may display a SmartScreen prompt. The
+[release page](https://github.com/whyeo/pnc-counter/releases/tag/v0.6.0) includes
+`SHA256SUMS.txt` for checking the download. See the
+[Windows installation guide](docs/windows-installer.md) for prerequisites,
+repair, uninstall behavior, and build instructions.
+
+The packaged desktop release is currently Windows-only. Python source installation
+is available for macOS/Linux, but a macOS app bundle has not been validated or released.
 
 ### Python package / developer installation
 
@@ -40,7 +69,10 @@ The base installation contains NumPy, SciPy, scikit-image, nd2, tifffile, and
 Pillow, plus a small native Tk drag-and-drop wrapper. Deep-learning dependencies and model weights are separate so a small
 installation can read images, analyze existing masks, and use watershed.
 
-## SAM 2.1 setup (recommended)
+## SAM 2.1 setup for Python/source installations
+
+**Windows installer users can skip this section:** the first-run wizard handles
+these dependencies and model downloads.
 
 SAM 2.1 Tiny is the default: an updated SAM model with a 156 MB checkpoint.
 Install PyTorch for your hardware, then the pinned **official Meta SAM 2** source
@@ -148,7 +180,7 @@ See the [review guide](docs/manual-review.md) for overlap rules, stable IDs,
 keyboard shortcuts, and saved-file details. Proposed next improvements are
 prioritized in the [roadmap](docs/roadmap.md).
 
-### Accuracy workflow and additional analysis modes (v0.4)
+### Accuracy workflow and additional analysis modes
 
 - **Advanced settings → Nuclei / PNC / Acquisition** includes explicit border exclusion, nucleus area
   in µm² from ND2/OME calibration or manual pixel sizes, and a separate candidate
@@ -162,6 +194,77 @@ prioritized in the [roadmap](docs/roadmap.md).
 See the [accuracy workflow guide](docs/accuracy-workflow.md) for definitions,
 examples, and validation limits. Reference sets require explicit human review;
 model-produced masks are not automatically treated as ground truth.
+
+### When PNC-positive and PNC-negative controls overlap
+
+The default `pnc_mode=pixels` calls a nucleus positive when at least
+`positive_threshold` thresholded PNC pixels lie inside it (default: 10). Those
+pixels do not have to form one connected punctum. Background fluctuations or
+unrelated bright structures can therefore contribute to a positive call, while
+weak or small PNCs can be missed.
+
+- **Image threshold** changes which PNC pixels are foreground; **Positive threshold**
+  changes how many foreground pixels are needed per nucleus. Neither changes
+  the SAM nucleus boundaries.
+- The local **Image threshold** control preserves the legacy formula. Its 0–100
+  range changes the local-mean multiplier only from 1.5 to 1.6, so large changes
+  in the displayed setting can have little effect on the result.
+- Compare negative controls, clear positive controls, and small/weak PNC examples
+  acquired under matching conditions. Check channel assignments and review the
+  **PNC** and **PNC threshold** views alongside the nucleus boundaries.
+- Raising a pixel cutoff may reduce background calls while also losing small
+  PNCs. The optional `pnc_mode=spots` groups foreground pixels into candidate
+  puncta and adds size/count filters, but it uses the same initial threshold and
+  is not a validated solution to control separation.
+- To correct an individual call, select the nucleus in the review editor and
+  use **Reviewer / note / PNC call** to choose positive or negative, then
+  **Save new revision**. The automatic result is preserved separately.
+
+Use reviewed examples to choose settings, then evaluate those settings on
+separate fields. Folder names describe sample groups; they are not verified
+per-nucleus labels. The app currently has no automatic control-based threshold
+calibration or calibrated PNC confidence score.
+
+#### Preliminary HeLa control experiment: 30% tuning / 70% validation
+
+A reproducible comparison used 11 whole fields for tuning and 26 held-out
+fields for validation, stratified across the three HeLa folders. Nucleus
+geometry stayed fixed. The tuning search compared seven pixel cutoffs and 120
+background-aware peak rules; parameters were frozen before held-out evaluation.
+
+| Held-out group | Fields | v0.6.0: 10 pixels | Tuning-selected: 100 pixels |
+| --- | ---: | ---: | ---: |
+| PNC negative | 7 | 24.6% | 0.3% |
+| PNC positive | 12 | 84.7% | 73.7% |
+| PNC small | 7 | 8.2% | 0.0% |
+
+Values are the mean percentage of nuclei called positive per image field,
+**not sensitivity, specificity, or accuracy**. The selected cutoff reduces
+negative-group calls but loses all small-PNC calls, so it is **not adopted**.
+The tested background-aware rules did not solve that trade-off on tuning data.
+The released defaults remain unchanged.
+
+The split keeps visually inspected example fields in tuning and checks for
+identical DAPI/PNC projection pairs. Baseline summaries were examined before the
+split. Specimen relationships are unknown, so this is preliminary field-level
+validation, not independent-specimen validation. Folder names are weak labels;
+reviewed per-nucleus PNC calls and punctum annotations are needed for the next
+detector comparison. PNC identification also depends on punctate structure and
+nucleolar location, not brightness alone ([example scoring definition](https://pmc.ncbi.nlm.nih.gov/articles/PMC2640956/)).
+
+For developers, [the research comparison tool](tools/pnc_control_experiment.py)
+uses exported analyses whose source parent folders are `PNC negative`,
+`PNC positive`, and `PNC small`. It records the split, export hashes, extracted
+measurements, frozen parameters, and held-out results separately:
+
+```powershell
+python tools/pnc_control_experiment.py prepare --results results --output validation/local/hela-30-70
+python tools/pnc_control_experiment.py extract --output validation/local/hela-30-70
+python tools/pnc_control_experiment.py fit --output validation/local/hela-30-70
+python tools/pnc_control_experiment.py validate --output validation/local/hela-30-70
+```
+
+This tool is an experiment, not an automatic calibration feature of the desktop app.
 
 ## Batch analysis
 
@@ -275,7 +378,10 @@ drafts. See the [release guide](docs/releases.md) for source-commit provenance,
 checksums, the local-build fallback and website download links.
 CI tests the base package on Windows/Linux with Python 3.10/3.12; real microscopy
 data tests skip when private local data are absent. The Windows installer is
-unsigned; code signing and a separate clean Windows machine test remain release steps.
+unsigned. The v0.6.0 Windows installer passed installation, guided CPU/SAM setup,
+ND2 analysis/export, and uninstallation on a GitHub-hosted Windows runner without
+MATLAB. Its release assets include source-commit provenance and a verification
+report. This is a functional smoke test, not a validation of PNC classification.
 
 The original implementation is preserved in [legacy/matlab](legacy/matlab) for
 historical comparison. [Migration notes](docs/migration.md) describe deliberate
