@@ -19,10 +19,11 @@ def digest(path):
     return result.hexdigest()
 
 
-def project_version(root):
+def project_version(root, *, allow_preview=False):
     text = (Path(root) / "pyproject.toml").read_text(encoding="utf-8")
     project = text.split("[project]", 1)[1].split("\n[", 1)[0]
-    match = re.search(r'^version\s*=\s*"(\d+\.\d+\.\d+)"\s*$', project, re.MULTILINE)
+    suffix = r"(?:\.dev[1-9][0-9]*)?" if allow_preview else ""
+    match = re.search(r'^version\s*=\s*"(\d+\.\d+\.\d+' + suffix + r')"\s*$', project, re.MULTILINE)
     if not match:
         raise ValueError("Release version must be a stable X.Y.Z in pyproject.toml")
     version = match[1]
@@ -35,7 +36,7 @@ def project_version(root):
 
 
 def validate_tag(tag, version):
-    if tag != f"v{version}":
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version) or tag != f"v{version}":
         raise ValueError(f"Release tag {tag!r} must match pyproject.toml: v{version}")
 
 
@@ -60,7 +61,8 @@ def write_release_assets(installer, manifest, notes=None):
     installer = Path(installer)
     sha256 = digest(installer)
     record = {"schema": 1, "version": manifest["application_version"],
-              "tag": f"v{manifest['application_version']}", "source": manifest["source"],
+              "tag": None if manifest.get("channel") == "preview" else f"v{manifest['application_version']}",
+              "channel": manifest.get("channel", "stable"), "source": manifest["source"],
               "matlab": manifest["matlab"], "installer": {"name": installer.name,
               "sha256": sha256, "bytes": installer.stat().st_size},
               "built_utc": datetime.now(timezone.utc).isoformat(),

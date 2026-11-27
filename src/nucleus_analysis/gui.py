@@ -29,17 +29,20 @@ from .workflow import inspect_image, raw_preview, suggest_channels
 CHOICES = {"backend": ("sam2", "sam3", "watershed"), "device": ("cpu", "cuda", "mps"),
            "sam2_model": ("tiny", "small", "base_plus", "large"),
            "threshold_mode": ("local", "global"), "quality_filter": ("none", "legacy-svm"),
-           "border_policy": ("include", "exclude"), "pnc_mode": ("pixels", "spots")}
+           "border_policy": ("include", "exclude"), "pnc_mode": ("pixels", "spots", "adaptive")}
 OPTIONAL_FLOATS = {"min_nucleus_area_um2", "max_nucleus_area_um2", "pixel_size_x_um", "pixel_size_y_um"}
 
 
 class CounterApp:
     def __init__(self, root, *, preference_file=None, initialize=True):
+        from . import __version__
+
         self.root = root
         self.preference_file = Path(preference_file) if preference_file else preferences_path()
         self.preferences = load_preferences(self.preference_file)
         try:
-            self.config = AnalysisConfig(**self.preferences.get("analysis", {}))
+            saved_analysis = self.preferences.get("analysis")
+            self.config = AnalysisConfig(**(saved_analysis or {}))
         except (ValueError, TypeError):
             self.config = AnalysisConfig()
         self.paths, self.editors, self.controls = [], [], []
@@ -67,7 +70,7 @@ class CounterApp:
         self.status = tk.StringVar(value="Add images or drop a folder to begin.")
         self.file_status = tk.StringVar(value="Drop ND2 / multichannel TIFF images or a folder here")
         self.hardware_status, self.protocol_status = tk.StringVar(), tk.StringVar()
-        root.title("Nucleus Analysis — PNC Counter")
+        root.title(f"PNC Counter {__version__}" + (" — local preview" if ".dev" in __version__ else ""))
         root.geometry("1180x800")
         root.minsize(920, 650)
         root.protocol("WM_DELETE_WINDOW", self.close)
@@ -90,6 +93,7 @@ class CounterApp:
         actions = ttk.Frame(frame)
         actions.grid(row=3, column=0, sticky="ew", pady=10)
         for label, command in [("Analyze images", self.start), ("Check channels", self.check_channels),
+                               ("Adjust PNC sensitivity", self.review_selected),
                                ("Review / correct selected", self.review_selected), ("Open results folder", self.open_results)]:
             self._button(actions, label, command).pack(side="left", padx=(0, 6))
         self.cancel_button = ttk.Button(actions, text="Stop after this image", command=self.cancel.set, state="disabled")
@@ -182,8 +186,11 @@ class CounterApp:
             self.status.set(f"Preferences could not be saved: {exc}")
 
     def refresh_protocol(self):
+        method = {"adaptive": "Background-aware", "pixels": "Legacy pixels", "spots": "Legacy spots"}[
+            self.values["pnc_mode"].get()]
+        sensitivity = f" · Sensitivity {self.values['pnc_sensitivity'].get()}" if self.values["pnc_mode"].get() == "adaptive" else ""
         self.protocol_status.set(f"Protocol: {self.values['backend'].get().upper()} "
-                                 f"{self.values['sam2_model'].get()} · PNC {self.values['pnc_mode'].get()}")
+                                 f"{self.values['sam2_model'].get()} · PNC {method}{sensitivity}")
 
     def refresh_hardware_label(self):
         text = "Detecting hardware (one-time setup)…" if self.setup_busy else "Hardware setup pending"
@@ -318,7 +325,7 @@ class CounterApp:
         groups = {
             "Nuclei": ["backend", "sam2_model", "min_nucleus_area", "max_nucleus_area", "quality_filter",
                        "overlap_threshold", "border_policy", "border_margin", "min_nucleus_area_um2", "max_nucleus_area_um2"],
-            "PNC": ["threshold_mode", "image_threshold", "positive_threshold", "neighborhood_size", "pnc_mode",
+            "PNC": ["pnc_mode", "pnc_sensitivity", "threshold_mode", "image_threshold", "positive_threshold", "neighborhood_size",
                     "min_spot_count", "spot_min_area", "spot_max_area", "spot_min_distance", "spot_background_sigma", "review_positive_margin"],
             "Acquisition": ["dapi_channel", "pnc_channel", "time_index", "position_index", "pixel_size_x_um", "pixel_size_y_um"],
             "Model": ["points_per_side", "points_per_batch", "score_threshold", "stability_threshold",
@@ -839,7 +846,8 @@ class CounterApp:
             return
         selection = self.table.selection()
         if not selection or selection[0] not in self.output_by_item:
-            messagebox.showinfo("Review nuclei", "Select a completed result first, or open a saved analysis.")
+            messagebox.showinfo("Adjust / review PNC", "Analyze an image once, or use Open saved analysis. "
+                                "You can then adjust PNC sensitivity using the saved nuclei without rerunning SAM.")
             return
         item = selection[0]
         directory = self.output_by_item[item]
@@ -855,7 +863,16 @@ class CounterApp:
                 self.set_counts(item, stats, "Reviewed")
                 self.status.set(f"Reviewed counts saved to {path}")
                 self.show_preview()
-            self.editors.append(ReviewEditor(self.root, directory, on_saved=saved))
+            def protocol(config):
+                for name in ("pnc_mode", "pnc_sensitivity", "threshold_mode", "image_threshold", "positive_threshold",
+                             "neighborhood_size", "min_spot_count", "spot_min_area", "spot_max_area", "spot_min_distance",
+                             "spot_background_sigma", "review_positive_margin"):
+                    self.values[name].set(str(getattr(config, name)))
+                self.config = self.get_config()
+                self.preferences["analysis"] = self.config.to_dict()
+                self.persist()
+                self.refresh_protocol()
+            self.editors.append(ReviewEditor(self.root, directory, on_saved=saved, on_protocol=protocol))
         except (OSError, ValueError, KeyError, TypeError) as exc:
             messagebox.showerror("Review nuclei", str(exc))
 

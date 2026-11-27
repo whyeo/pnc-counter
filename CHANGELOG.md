@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.7.0 development preview (0.7.0.dev1, not finalized)
+
+- Added an optional intranuclear background/noise-aware PNC candidate detector,
+  with cached score images, fixed candidate geometry, and a broad sensitivity range.
+- Added a debounced live sensitivity slider in the review window, stale-response
+  protection, reusable batch PNC settings, and an Adjust PNC sensitivity entry point.
+- Preserved manual PNC calls, undo/redo, immutable revisions, legacy defaults,
+  and saved/exported method/score provenance. Slider changes do not rerun SAM.
+- Added a separate local preview installer/profile and guards preventing development
+  versions from being published through the stable release workflow.
+- Biological accuracy remains unconfirmed; local user testing is required before
+  v0.7.0 is finalized, tagged, or published.
+
 ## Windows installer and guided setup (v0.6.0)
 
 - Added source-commit build provenance, release checksums and version-tagged

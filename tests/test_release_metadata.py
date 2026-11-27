@@ -42,6 +42,26 @@ def test_release_source_rejects_dirty_worktrees(monkeypatch, tmp_path):
         source_identity(tmp_path, require_clean=True)
 
 
+def test_preview_versions_cannot_be_finalized_by_stable_release_workflow(tmp_path):
+    (tmp_path / "src/nucleus_analysis").mkdir(parents=True)
+    (tmp_path / "src/nucleus_analysis/__init__.py").write_text('__version__ = "0.7.0.dev1"')
+    (tmp_path / "pyproject.toml").write_text('[project]\nversion = "0.7.0.dev1"\n')
+    assert project_version(tmp_path, allow_preview=True) == "0.7.0.dev1"
+    with pytest.raises(ValueError, match="stable"):
+        project_version(tmp_path)
+    with pytest.raises(ValueError, match="must match"):
+        validate_tag("v0.7.0.dev1", "0.7.0.dev1")
+
+
+def test_preview_assets_do_not_claim_a_stable_tag(tmp_path):
+    installer = tmp_path / "PNC-Counter-0.7.0.dev1-Preview-Setup-x64.exe"
+    installer.write_bytes(b"preview fixture")
+    manifest = {"application_version": "0.7.0.dev1", "channel": "preview", "source": {},
+                "matlab": {}, "python": {}, "sam2_source": {}}
+    record = write_release_assets(installer, manifest)
+    assert record["channel"] == "preview" and record["tag"] is None
+
+
 def test_checksum_and_build_identity_match_the_exact_asset(tmp_path):
     installer = tmp_path / "PNC-Counter-0.6.0-Setup-x64.exe"
     installer.write_bytes(b"MZ fake fixture installer")

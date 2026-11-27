@@ -11,13 +11,16 @@ from pathlib import Path
 
 
 def preferences_path():
+    from . import __version__
+
     if sys.platform == "win32":
         base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local"))
     elif sys.platform == "darwin":
         base = Path.home() / "Library/Application Support"
     else:
         base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    return base / "PNC Counter/preferences.json"
+    name = "PNC Counter Preview" if ".dev" in __version__ else "PNC Counter"
+    return base / name / "preferences.json"
 
 
 def runtime_signature():

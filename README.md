@@ -8,6 +8,12 @@ CLI, and Python API. No MATLAB, Java, Bio-Formats, pandas, or web server is need
 or visit [Releases](https://github.com/whyeo/pnc-counter/releases) for release notes,
 checksums, and verification reports. The installer includes Python; MATLAB is not required.
 
+**In development: v0.7.0 local preview (`0.7.0.dev1`).** This adds an optional
+background-aware PNC detector and a live sensitivity slider. It has not been
+approved as a stable release; v0.6.0 remains the published download. The preview
+does not establish improved biological accuracy. Local testing and approval are
+required before creating a v0.7.0 tag or publishing its installer.
+
 **Accuracy status:** automatic PNC classification still needs calibration and
 manual review. HeLa control-folder testing found substantial positive calls in
 the negative group and very few in the small-PNC group. SAM finds nucleus
@@ -225,6 +231,46 @@ separate fields. Folder names describe sample groups; they are not verified
 per-nucleus labels. The app currently has no automatic control-based threshold
 calibration or calibrated PNC confidence score.
 
+#### Try the v0.7 local preview
+
+The preview installs as **PNC Counter Preview**, alongside the stable app, with
+separate preferences and model setup. To test just the new PNC detector, choose
+**Set up later**, then **Open saved analysis** and select an existing v0.6.0
+`analysis.json`. This uses saved projections and nuclei and does not require SAM.
+
+1. In the review window, choose **Background-aware (preview)** in **PNC sensitivity**.
+2. Move the slider toward **Stricter** or **More sensitive**. The overlay, candidate
+   spots, and counts update after a short pause. Nucleus boundaries stay fixed.
+3. Inspect the **PNC**, **PNC threshold**, and **DAPI + PNC** views. Confirm small
+   puncta and check negative controls; more calls alone do not mean better detection.
+4. Use **Save new revision** to keep the calls and sensitivity value. This preserves
+   the original analysis. Manual PNC overrides remain in effect.
+5. **Use for next analysis** saves the PNC settings for subsequent analyses.
+   To process new raw images, complete the preview's SAM setup first.
+
+The new method estimates intranuclear background and robust noise, then selects
+connected candidate puncta by their signal strength. The slider spans a broad
+logarithmic score range; it is not the old 0–100 legacy multiplier control.
+Candidate geometry is cached, so dragging the slider does not rerun SAM or
+rebuild the image measurements. **Spot min/max area**, **Spot min distance**, and
+**Min spot count** remain available in Advanced settings. Calibrated images use
+physical smoothing/background scales; uncalibrated images use pixel defaults.
+
+The detector scores bright puncta; it does not verify nucleolar identity or
+produce a calibrated probability. Early real-control testing still showed excess
+calls in negative fields, so the legacy default is retained. Saved protocols
+remain explicit about which method generated their results. Further improvements
+need reviewed positive/negative puncta, including genuinely small PNCs.
+
+Developers can build the isolated local preview with:
+
+```powershell
+python tools/build_windows.py --preview --bootstrap-compiler --require-clean
+```
+
+Stable-release validation rejects `.dev` versions; preview build metadata has
+no stable tag. Preview assets are written under `dist/preview/`.
+
 #### Preliminary HeLa control experiment: 30% tuning / 70% validation
 
 A reproducible comparison used 11 whole fields for tuning and 26 held-out
@@ -363,14 +409,15 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m ruff check src tests tools
 python -m build
-python -m pip install dist/nucleus_analysis-0.6.0-py3-none-any.whl
+python -m pip install dist/nucleus_analysis-0.7.0.dev1-py3-none-any.whl
 ```
 
 The wheel contains only Python code and the small exported SVM, with no raw data,
 MATLAB code, JVM, neural weights, or bundled PyTorch. Distribute it with the
 appropriate dependencies and a separately downloaded checkpoint for offline use.
 The repository also builds a Windows installer with a private Python runtime:
-`python tools/build_windows.py --bootstrap-compiler`. A manually triggered
+`python tools/build_windows.py --preview --bootstrap-compiler` for this development
+version. A manually triggered
 **Windows installer** GitHub Actions workflow builds the same installer, verifies
 installation and a sample ND2 analysis on a MATLAB-free Windows runner, and
 attaches versioned assets to matching version-tag releases. Manual runs prepare

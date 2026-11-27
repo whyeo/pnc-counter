@@ -38,6 +38,7 @@ class AnalysisConfig:
     border_policy: str = "include"
     border_margin: int = 0
     pnc_mode: str = "pixels"
+    pnc_sensitivity: float = 50.0
     min_spot_count: int = 1
     spot_min_area: int = 3
     spot_max_area: int = 500
@@ -52,7 +53,7 @@ class AnalysisConfig:
             "quality_filter": ("none", "legacy-svm"),
             "sam2_model": ("tiny", "small", "base_plus", "large"),
             "border_policy": ("include", "exclude"),
-            "pnc_mode": ("pixels", "spots"),
+            "pnc_mode": ("pixels", "spots", "adaptive"),
         }
         for name, allowed in choices.items():
             if getattr(self, name) not in allowed:
@@ -79,6 +80,8 @@ class AnalysisConfig:
                 raise ValueError(f"{name} must be between 0 and 1")
         if not 0 <= self.image_threshold <= 100:
             raise ValueError("image_threshold must be between 0 and 100")
+        if isinstance(self.pnc_sensitivity, bool) or not math.isfinite(self.pnc_sensitivity) or not 0 <= self.pnc_sensitivity <= 100:
+            raise ValueError("pnc_sensitivity must be finite and between 0 and 100")
         if not math.isfinite(self.watershed_sigma) or self.watershed_sigma <= 0:
             raise ValueError("watershed_sigma must be positive and finite")
         if self.device not in ("cpu", "cuda", "mps"):

@@ -72,16 +72,22 @@ def unpack_python(archive, destination):
 
 
 def main():
+    global BUILD
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inno", type=Path, help="Path to ISCC.exe")
     parser.add_argument("--bootstrap-compiler", action="store_true")
     parser.add_argument("--prepare-only", action="store_true", help="Prepare/test runtime without compiling Setup")
     parser.add_argument("--require-clean", action="store_true", help="Reject an uncommitted release source tree")
     parser.add_argument("--tag", help="Validate a release tag against pyproject.toml")
+    parser.add_argument("--preview", action="store_true", help="Build an isolated local preview, never a stable release")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Build the Windows installer on Windows")
-    version = project_version(ROOT)
+    version = project_version(ROOT, allow_preview=args.preview)
+    if args.preview:
+        if args.tag or ".dev" not in version:
+            parser.error("Preview builds require a .dev version and cannot use a release tag")
+        BUILD = ROOT / "build/windows-preview"
     if args.tag:
         validate_tag(args.tag, version)
     identity = source_identity(ROOT, require_clean=args.require_clean)
@@ -115,7 +121,8 @@ def main():
          "--wheel-dir", sam_wheels, source], env=environment)
     run([python, "-I", "-m", "pip", "wheel", "--constraint", constraints,
          "--wheel-dir", sam_wheels, "hydra-core", "iopath", "tqdm"])
-    manifest = {"schema": 1, "application_version": version, "python": LOCK["python"],
+    manifest = {"schema": 1, "application_version": version, "channel": "preview" if args.preview else "stable",
+                "python": LOCK["python"],
                 "source": identity,
                 "matlab": {"used_for_build": False, "version": None, "compiler_license_required": False},
                 "sam2_source": LOCK["sam2"],
@@ -136,10 +143,19 @@ def main():
              f"/DIR={BUILD / 'tools/inno'}"])
     if not compiler.is_file():
         parser.error("Install Inno Setup and pass --inno PATH/ISCC.exe, or use --bootstrap-compiler")
-    run([compiler, "/Qp", f"/DAppVersion={version}", f"/DRuntimeDir={runtime}", f"/DOutputDir={ROOT / 'dist'}",
+    filename = (f"PNC-Counter-{version}-Preview-Setup-x64" if args.preview
+                else INSTALLER_PATTERN.format(version=version).removesuffix(".exe"))
+    output_dir = ROOT / ("dist/preview" if args.preview else "dist")
+    options = (["/DAppName=PNC Counter Preview", "/DAppIdentity={{D397F5FC-A509-4C44-8959-18247B83FDF1}"]
+               if args.preview else [])
+    run([compiler, "/Qp", f"/DAppVersion={version}", f"/DWindowsVersion={version.split('.dev')[0]}.0",
+         f"/DFileBaseName={filename}", f"/DRuntimeDir={runtime}", f"/DOutputDir={output_dir}", *options,
          ROOT / "installer/windows/pnc-counter.iss"])
-    installer = ROOT / "dist" / INSTALLER_PATTERN.format(version=version)
-    write_release_assets(installer, manifest)
+    installer = output_dir / f"{filename}.exe"
+    notes = ("- Local v0.7 preview: background-aware PNC candidates and live sensitivity controls.\n"
+             "- Test controls and small PNCs locally; biological accuracy is not established.\n"
+             "- Separate preview installation and preferences; not approved for a stable release.\n") if args.preview else None
+    write_release_assets(installer, manifest, notes)
     print(f"Installer: {installer}", flush=True)
 
 

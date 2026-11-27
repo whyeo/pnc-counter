@@ -1,9 +1,11 @@
 """Lightweight Tk nucleus review window with polygon and freehand corrections."""
 
+import copy
 import json
 import queue
 import threading
 import tkinter as tk
+from dataclasses import replace
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
@@ -13,6 +15,8 @@ from scipy import ndimage as ndi
 
 from .imaging import scale_uint8
 from .review import ReviewSession
+
+PNC_METHODS = {"Background-aware (preview)": "adaptive", "Legacy pixel count": "pixels", "Legacy spot count": "spots"}
 
 
 def render_review(session, selected=(), channel="DAPI", show_masks=True):
@@ -48,10 +52,16 @@ def render_review(session, selected=(), channel="DAPI", show_masks=True):
 
 
 class ReviewEditor:
-    def __init__(self, parent, directory, on_saved=None):
+    def __init__(self, parent, directory, on_saved=None, on_protocol=None):
         self.session = ReviewSession.open(directory)
         self.directory = Path(directory).resolve()
         self.on_saved = on_saved
+        self.on_protocol = on_protocol
+        self._pnc_token = 0
+        self._pnc_after = None
+        self._pending_pnc = None
+        self._pnc_worker = None
+        self._syncing_pnc = False
         self.selected = set()
         self.points = []
         self.tool_target = None
@@ -117,6 +127,24 @@ class ReviewEditor:
         side_window = side_canvas.create_window(0, 0, window=sidebar, anchor="nw")
         sidebar.bind("<Configure>", lambda _e: side_canvas.configure(scrollregion=side_canvas.bbox("all")))
         side_canvas.bind("<Configure>", lambda e: side_canvas.itemconfigure(side_window, width=e.width))
+        tuning = ttk.LabelFrame(sidebar, text="PNC sensitivity", padding=6)
+        tuning.pack(fill="x", pady=(0, 8))
+        self.pnc_method = tk.StringVar(value=next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
+        method = ttk.Combobox(tuning, textvariable=self.pnc_method, values=tuple(PNC_METHODS), state="readonly", width=27)
+        self.pnc_method_box = method
+        method.pack(fill="x")
+        method.bind("<<ComboboxSelected>>", self.schedule_pnc_preview)
+        self.pnc_sensitivity = tk.DoubleVar(value=self.session.config.pnc_sensitivity)
+        self.pnc_slider = ttk.Scale(tuning, from_=0, to=100, variable=self.pnc_sensitivity,
+                                    command=self.schedule_pnc_preview)
+        self.pnc_slider.pack(fill="x", pady=5)
+        ttk.Label(tuning, text="Stricter                 More sensitive").pack(fill="x")
+        self.pnc_readout = tk.StringVar()
+        ttk.Label(tuning, textvariable=self.pnc_readout, wraplength=225).pack(fill="x", pady=4)
+        ttk.Label(tuning, text="Preview uses saved nuclei. Save a new revision to keep these calls. Manual calls are retained.",
+                  wraplength=225).pack(fill="x")
+        if on_protocol:
+            self.button(tuning, "Use for next analysis", self.use_pnc_protocol).pack(fill="x", pady=4)
         ttk.Label(sidebar, text="Select nuclei (Ctrl+click for multiple)", wraplength=225).pack(anchor="w")
         self.queue_filter = tk.StringVar(value="all")
         queue_filter = ttk.Combobox(sidebar, textvariable=self.queue_filter,
@@ -174,6 +202,60 @@ class ReviewEditor:
         x, y = self.canvas.canvasx(event.x) / self.scale, self.canvas.canvasy(event.y) / self.scale
         h, w = self.session.shape
         return (x, y) if 0 <= x <= w - 1 and 0 <= y <= h - 1 else None
+
+    def schedule_pnc_preview(self, _value=None):
+        if self._syncing_pnc:
+            return
+        if self.points:
+            self.status.set("Finish or cancel the outline before changing PNC settings.")
+            return
+        self._pnc_token += 1
+        if self._pnc_after:
+            self.window.after_cancel(self._pnc_after)
+        self._pnc_after = self.window.after(180, self.launch_pnc_preview)
+
+    def launch_pnc_preview(self):
+        self._pnc_after = None
+        mode = PNC_METHODS[self.pnc_method.get()]
+        config = replace(self.session.config, pnc_mode=mode,
+                         pnc_sensitivity=round(self.pnc_sensitivity.get(), 1))
+        self.pnc_slider.configure(state="normal" if mode == "adaptive" else "disabled")
+        self.pnc_readout.set(f"Sensitivity: {config.pnc_sensitivity:.1f} / 100" if mode == "adaptive"
+                             else "Select Background-aware to use the slider. Legacy thresholds are in Advanced settings.")
+        self._pending_pnc = (self._pnc_token, config)
+        if self.busy or self._pnc_worker and self._pnc_worker.is_alive():
+            return
+        self._start_pending_pnc()
+
+    def _start_pending_pnc(self):
+        if not self._pending_pnc:
+            return
+        token, config = self._pending_pnc
+        self._pending_pnc = None
+        if config == self.session.config:
+            return
+        snapshot = copy.copy(self.session)
+        snapshot.config = config
+        self.busy = True
+        for widget in self.buttons:
+            widget.configure(state="disabled")
+        self.status.set("Updating PNC candidates from saved nuclei; SAM is not being rerun...")
+
+        def work():
+            try:
+                snapshot.counts()
+                self.events.put(("pnc_preview", (token, snapshot, None)))
+            except Exception as exc:
+                self.events.put(("pnc_preview", (token, None, str(exc))))
+        self._pnc_worker = threading.Thread(target=work, daemon=True)
+        self._pnc_worker.start()
+
+    def use_pnc_protocol(self):
+        if self.busy or self._pnc_after or self._pending_pnc:
+            return
+        if self.on_protocol:
+            self.on_protocol(self.session.config)
+            self.status.set("PNC settings saved for future analyses. Save a new revision to keep this image's preview.")
 
     def click(self, event):
         if self.busy:
@@ -290,6 +372,14 @@ class ReviewEditor:
         self.action(self.session.reset)
 
     def refresh(self):
+        self._syncing_pnc = True
+        self.pnc_method.set(next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
+        self.pnc_sensitivity.set(self.session.config.pnc_sensitivity)
+        adaptive = self.session.config.pnc_mode == "adaptive"
+        self.pnc_slider.configure(state="normal" if adaptive else "disabled")
+        self.pnc_readout.set(f"Sensitivity: {self.session.config.pnc_sensitivity:.1f} / 100" if adaptive
+                             else "Select Background-aware to use the slider. Legacy thresholds are in Advanced settings.")
+        self._syncing_pnc = False
         counts, details = self.session.counts()
         percent = f"{counts['percentage']:.2f}%" if counts["percentage"] is not None else "N/A"
         self.stats.set(f"PNC+ {counts['n_positive']} / {counts['n_total']} ({percent})   "
@@ -311,6 +401,8 @@ class ReviewEditor:
             self.detail.set(f"Nucleus {identifier}\nArea: {len(mask.pixels)} px\n"
                             f"Positive PNC pixels: {details[identifier]['positive_pixels']}\n"
                             f"PNC spots: {details[identifier]['spots']}\n"
+                            + (f"Relative PNC signal score: {details[identifier]['signal_score']:.1f}\n"
+                               if "signal_score" in details[identifier] else "") +
                             f"PNC call: {'automatic' if mask.pnc_override is None else 'manual positive' if mask.pnc_override else 'manual negative'}\n"
                             f"{'Verified' if mask.reviewed else 'Awaiting verification'}\n"
                             f"{'Manually edited' if mask.edited else 'Original boundary'}\n"
@@ -422,7 +514,7 @@ class ReviewEditor:
         self.canvas.configure(scrollregion=(0, 0, *size))
         self.canvas.delete("ids")
         self.canvas.delete("spots")
-        if self.session.config.pnc_mode == "spots" and self.show_masks.get():
+        if self.session.config.pnc_mode in ("spots", "adaptive") and self.show_masks.get():
             for spot in self.session._spot_rows:
                 x, y = (spot["CentroidX"] - 1) * self.scale, (spot["CentroidY"] - 1) * self.scale
                 self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, outline="#40ff80", width=2, tags="spots")
@@ -465,7 +557,7 @@ class ReviewEditor:
         self.canvas.yview_moveto(0)
 
     def save(self):
-        if self.busy:
+        if self.busy or self._pnc_after or self._pending_pnc:
             return
         if self.points:
             messagebox.showinfo("Unfinished outline", "Finish or cancel your outline before saving.", parent=self.window)
@@ -478,7 +570,11 @@ class ReviewEditor:
         self.save_to(folder)
 
     def save_to(self, folder):
+        if self.busy or self._pnc_after or self._pending_pnc:
+            return
         self.busy = True
+        self.pnc_method_box.configure(state="disabled")
+        self.pnc_slider.configure(state="disabled")
         for widget in self.buttons:
             widget.configure(state="disabled")
         self.status.set("Measuring corrected nuclei and saving a new revision...")
@@ -497,9 +593,24 @@ class ReviewEditor:
             pass
         else:
             self.busy = False
+            self.pnc_method_box.configure(state="readonly")
             for widget in self.buttons:
                 widget.configure(state="normal")
-            if kind in ("saved", "reference"):
+            if kind == "pnc_preview":
+                token, preview, error = payload
+                if preview is not None:
+                    # Even an obsolete slider response can warm the immutable
+                    # geometry cache. Only the newest request changes calls.
+                    for name in ("_adaptive_features", "_adaptive_geometry_key", "_adaptive_source_masks"):
+                        setattr(self.session, name, getattr(preview, name))
+                if token == self._pnc_token:
+                    if error:
+                        self.status.set(f"PNC preview failed: {error}")
+                    else:
+                        self.session.set_pnc_config(preview.config, preview)
+                        self.status.set("PNC preview updated. Review candidates and save a new revision to keep changes.")
+                        self.refresh()
+            elif kind in ("saved", "reference"):
                 directory, stats = payload[:2]
                 self.directory = directory
                 self.status.set(f"Verified reference registered: {payload[2]}" if kind == "reference"
@@ -510,14 +621,19 @@ class ReviewEditor:
             else:
                 self.status.set("Save failed; edits remain available. Choose a writable folder and retry.")
                 messagebox.showerror("Save revision", payload, parent=self.window)
+                self.refresh()
+        if not self.busy and self._pending_pnc and not (self._pnc_worker and self._pnc_worker.is_alive()):
+            self._start_pending_pnc()
         self._poll_id = self.window.after(100, self.poll)
 
     def close(self):
-        if self.busy:
+        if self.busy or self._pnc_worker and self._pnc_worker.is_alive():
             messagebox.showinfo("Saving", "Wait for the revision to finish saving before closing.", parent=self.window)
             return
         if self.session.dirty or self.points:
             if not messagebox.askyesno("Unsaved corrections", "Close and discard unsaved corrections?", parent=self.window):
                 return
         self.window.after_cancel(self._poll_id)
+        if self._pnc_after:
+            self.window.after_cancel(self._pnc_after)
         self.window.destroy()

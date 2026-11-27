@@ -13,10 +13,18 @@ import tifffile
 from scipy import ndimage as ndi
 from skimage.draw import polygon
 
+from .adaptive_pnc import prepare_adaptive, select_adaptive
 from .config import AnalysisConfig
 from .imaging import Projections
 from .output import export_result, write_csv
-from .phenotype import assign_spots, detect_spots, marker_image, segmentation_config, touches_border
+from .phenotype import (
+    assign_spots,
+    detect_spots,
+    marker_image,
+    pixel_size,
+    segmentation_config,
+    touches_border,
+)
 from .pipeline import analyze, threshold_pnc
 from .segmentation import file_sha256, load_masks, save_masks, validate_candidates
 
@@ -74,6 +82,9 @@ class ReviewSession:
         self._saved_state = self._signature()
         self.warning = ""
         self._marker_config = None
+        self._adaptive_features = None
+        self._adaptive_geometry_key = None
+        self._adaptive_source_masks = ()
         self._update_marker()
 
     @property
@@ -344,11 +355,42 @@ class ReviewSession:
         self._commit("reset_to_original", dict(self.original_masks), self.original_masks,
                      config=self.original_config)
 
+    def set_pnc_config(self, config, preview=None):
+        if config == self.config:
+            return
+        self._commit("change_pnc_settings", dict(self.masks), [],
+                     json.dumps({"pnc_mode": config.pnc_mode, "pnc_sensitivity": config.pnc_sensitivity}),
+                     config=config)
+        if preview is not None:
+            for name in ("_marker_config", "_positive_pixels", "_spot_labels", "_spot_rows",
+                         "_adaptive_features", "_adaptive_geometry_key", "_adaptive_source_masks"):
+                setattr(self, name, getattr(preview, name))
+
     def _update_marker(self):
-        if self._marker_config != self.config:
+        geometry = None
+        if self.config.pnc_mode == "adaptive":
+            calibration = pixel_size(self.config, self.projections.metadata)
+            active = [(i, mask.pixels) for i, mask in self.masks.items() if not mask.rejected
+                      and not (self.config.border_policy == "exclude"
+                               and touches_border(mask.pixels, self.shape, self.config.border_margin))]
+            geometry = (tuple((i, id(pixels)) for i, pixels in active), calibration, self.config.spot_min_distance)
+            if self._adaptive_geometry_key != geometry:
+                self._adaptive_features = prepare_adaptive(self.projections.pnc_max,
+                    [p for _, p in active], [i for i, _ in active], calibration, self.config.spot_min_distance)
+                self._adaptive_geometry_key = geometry
+                # Retain immutable source arrays so their identities cannot be
+                # recycled while this cache key is active.
+                self._adaptive_source_masks = tuple(p for _, p in active)
+        marker_key = (self.config, geometry)
+        if self._marker_config == marker_key:
+            return
+        if self.config.pnc_mode == "adaptive":
+            self._positive_pixels, self._spot_labels, self._spot_rows = select_adaptive(
+                self._adaptive_features, self.config.pnc_sensitivity, self.config.spot_min_area, self.config.spot_max_area)
+        else:
             self._positive_pixels = threshold_pnc(marker_image(self.projections.pnc_max, self.config), self.config)
             self._spot_labels, self._spot_rows = detect_spots(self._positive_pixels, self.config)
-            self._marker_config = self.config
+        self._marker_config = marker_key
 
     def counts(self):
         self._update_marker()
@@ -365,7 +407,7 @@ class ReviewSession:
         for identifier, mask in self.masks.items():
             pixels = int(self._positive_pixels.ravel()[mask.pixels].sum())
             excluded = status[identifier]["BadMask"]
-            call = (spot_counts[identifier] >= self.config.min_spot_count if self.config.pnc_mode == "spots"
+            call = (spot_counts[identifier] >= self.config.min_spot_count if self.config.pnc_mode in ("spots", "adaptive")
                     else pixels >= self.config.positive_threshold)
             if mask.pnc_override is not None:
                 call = mask.pnc_override
@@ -373,6 +415,8 @@ class ReviewSession:
             details[identifier] = {"positive_pixels": pixels, "positive": is_positive,
                                    "spots": spot_counts[identifier], "rejected": bool(excluded),
                                    "border": status[identifier]["TouchesBorder"]}
+            if self.config.pnc_mode == "adaptive":
+                details[identifier]["signal_score"] = self._adaptive_features.measurements.get(identifier, {}).get("max_score", 0.)
             rejected += excluded
             positive += is_positive
             negative += not excluded and not is_positive
@@ -397,9 +441,10 @@ class ReviewSession:
             if details[identifier]["border"]:
                 reasons.append("partial/border nucleus")
                 priority += 40
-            value = details[identifier]["spots"] if self.config.pnc_mode == "spots" else details[identifier]["positive_pixels"]
-            cutoff = self.config.min_spot_count if self.config.pnc_mode == "spots" else self.config.positive_threshold
-            margin = 0 if self.config.pnc_mode == "spots" else self.config.review_positive_margin
+            spot_mode = self.config.pnc_mode in ("spots", "adaptive")
+            value = details[identifier]["spots"] if spot_mode else details[identifier]["positive_pixels"]
+            cutoff = self.config.min_spot_count if spot_mode else self.config.positive_threshold
+            margin = 0 if spot_mode else self.config.review_positive_margin
             if abs(value - cutoff) <= margin:
                 reasons.append("PNC measurement near cutoff")
                 priority += 30

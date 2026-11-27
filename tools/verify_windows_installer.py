@@ -123,6 +123,7 @@ def main():
     parser.add_argument("--require-no-matlab", action="store_true")
     parser.add_argument("--expected-commit")
     parser.add_argument("--setup-sam", action="store_true", help="Run real CPU setup and analyze with SAM")
+    parser.add_argument("--preview", action="store_true", help="Verify the isolated preview installer")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Installer verification requires Windows")
@@ -138,7 +139,8 @@ def main():
     assert install.resolve().is_relative_to(workdir)
     import winreg
 
-    key = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{B9C4DC6E-A44E-4862-8DA6-14983A6C7773}_is1"
+    identity = "D397F5FC-A509-4C44-8959-18247B83FDF1" if args.preview else "B9C4DC6E-A44E-4862-8DA6-14983A6C7773"
+    key = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{" + identity + "}_is1"
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
             if Path(winreg.QueryValueEx(handle, "InstallLocation")[0]).resolve() != install:

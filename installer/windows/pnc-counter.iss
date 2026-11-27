@@ -7,25 +7,38 @@
 #ifndef OutputDir
   #error OutputDir must be supplied by build_windows.py
 #endif
+#ifndef AppName
+  #define AppName "PNC Counter"
+#endif
+#ifndef AppIdentity
+  #define AppIdentity "{{B9C4DC6E-A44E-4862-8DA6-14983A6C7773}"
+#endif
+#ifndef WindowsVersion
+  #define WindowsVersion AppVersion
+#endif
+#ifndef FileBaseName
+  #define FileBaseName "PNC-Counter-" + AppVersion + "-Setup-x64"
+#endif
 
 [Setup]
-AppId={{B9C4DC6E-A44E-4862-8DA6-14983A6C7773}
-AppName=PNC Counter
+AppId={#AppIdentity}
+AppName={#AppName}
 AppVersion={#AppVersion}
+VersionInfoVersion={#WindowsVersion}
 AppPublisher=Nucleus Analysis contributors
-DefaultDirName={localappdata}\Programs\PNC Counter
-DefaultGroupName=PNC Counter
+DefaultDirName={localappdata}\Programs\{#AppName}
+DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
 MinVersion=10.0
 OutputDir={#OutputDir}
-OutputBaseFilename=PNC-Counter-{#AppVersion}-Setup-x64
+OutputBaseFilename={#FileBaseName}
 Compression=lzma2/normal
 SolidCompression=yes
 WizardStyle=modern
 SetupLogging=yes
-UninstallDisplayName=PNC Counter
+UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\runtime\pythonw.exe
 CloseApplications=yes
 RestartApplications=no
@@ -42,9 +55,9 @@ Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\docs\windows-installer.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\PNC Counter"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher"; WorkingDir: "{userdocs}"
-Name: "{group}\PNC Counter setup and repair"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher --setup"; WorkingDir: "{userdocs}"
-Name: "{autodesktop}\PNC Counter"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher"; WorkingDir: "{userdocs}"; Tasks: desktopicon
+Name: "{group}\{#AppName}"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher"; WorkingDir: "{userdocs}"
+Name: "{group}\{#AppName} setup and repair"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher --setup"; WorkingDir: "{userdocs}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher"; WorkingDir: "{userdocs}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher"; Description: "Open PNC Counter and complete first-time analysis setup"; Flags: nowait postinstall skipifsilent

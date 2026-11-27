@@ -56,7 +56,7 @@ def visualization(result):
     panels = [Image.fromarray(result.images["ch1_max"]).convert("RGB"), overlay(result),
               Image.fromarray(scale_uint8(result.images["ch2"])).convert("RGB"),
               Image.fromarray(result.images["ch2_thresh"].astype(np.uint8) * 255).convert("RGB")]
-    if result.config.pnc_mode == "spots":
+    if result.config.pnc_mode in ("spots", "adaptive"):
         draw_spots = ImageDraw.Draw(panels[3])
         for spot in result.spots or []:
             x, y = spot["CentroidX"] - 1, spot["CentroidY"] - 1
@@ -88,6 +88,14 @@ def export_result(result, directory, *, provenance=None):
                 "config": result.config.to_dict(), "input": result.metadata,
                 "segmentation": provenance or {"kind": "generated", "backend": result.config.backend},
                 "centroid_coordinates": "one-based X/Y pixels, matching MATLAB"}
+    if result.config.pnc_mode == "adaptive":
+        from .adaptive_pnc import ALGORITHM, sensitivity_threshold
+
+        metadata["pnc_detection"] = {"algorithm": ALGORITHM, "sensitivity": result.config.pnc_sensitivity,
+                                     "candidate_score_threshold": sensitivity_threshold(result.config.pnc_sensitivity),
+                                     "score_units": "robust intranuclear noise units; not a probability",
+                                     "candidate_support": "fixed half-height connected region",
+                                     "validation_status": "experimental; requires reviewed controls"}
     metadata["dependencies"] = {}
     for package in ("numpy", "scipy", "scikit-image", "nd2", "tifffile", "Pillow",
                     "torch", "torchvision", "SAM-2", "sam3"):
@@ -100,7 +108,9 @@ def export_result(result, directory, *, provenance=None):
     np.savez_compressed(directory / "images.npz", **result.images)
     if result.masks is not None:
         save_masks(directory / "nuclei_masks.npz", result.masks, result.images["ch1_max"].shape)
-    if result.config.pnc_mode == "spots":
+    if result.config.pnc_mode in ("spots", "adaptive"):
+        columns = ["SpotID", "Area", "CentroidX", "CentroidY", "AnchorPixel", "NucleusID"]
+        columns += list(dict.fromkeys(key for row in result.spots or [] for key in row if key not in columns))
         write_csv(directory / "spots.csv", result.spots or [],
-                  ["SpotID", "Area", "CentroidX", "CentroidY", "AnchorPixel", "NucleusID"])
+                  columns)
     visualization(result).save(directory / "visualization.png")
