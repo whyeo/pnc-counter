@@ -22,7 +22,7 @@ def review_data():
         yy, xx = np.mgrid[y:y + 21, x:x + 21]
         masks.append(np.ravel_multi_index((yy.ravel(), xx.ravel()), dapi.shape))
     projections = project_array(np.stack([dapi, pnc]), "CYX")
-    config = AnalysisConfig(backend="watershed", min_nucleus_area=100,
+    config = AnalysisConfig(backend="watershed", pnc_mode="pixels", min_nucleus_area=100,
                             max_nucleus_area=2000, threshold_mode="global")
     result = analyze(projections, config, masks)
     return projections, config, result

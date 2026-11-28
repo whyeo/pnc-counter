@@ -1,461 +1,183 @@
 # PNC Counter
 
-Python application for segmenting DAPI-labelled nuclei and counting PNC-positive
-nuclei in Nikon ND2 and multichannel TIFF images. Includes a desktop app, batch
-CLI, and Python API. No MATLAB, Java, Bio-Formats, pandas, or web server is needed.
+PNC Counter is a Python desktop application for finding nuclei and counting cells
+with perinucleolar compartments (PNCs) in Nikon ND2 and multichannel TIFF images.
+SAM finds the nucleus boundaries; **local enrichment** measures candidate PNC
+brightness relative to the surrounding nucleoplasm.
 
-**Windows release:** [Download PNC Counter v0.6.0](https://github.com/whyeo/pnc-counter/releases/download/v0.6.0/PNC-Counter-0.6.0-Setup-x64.exe)
-or visit [Releases](https://github.com/whyeo/pnc-counter/releases) for release notes,
-checksums, and verification reports. The installer includes Python; MATLAB is not required.
+**Current revision: 0.7.0.dev5, the v0.7.0 local preview.** The default local enrichment threshold
+is **1.8x**. Automatic calls are a starting point for human review. This preview
+must be tested locally before its release is finalized.
 
-**In development: v0.7.0 local preview (`0.7.0.dev2`).** This adds an optional
-background-aware PNC detector and a live sensitivity slider. It has not been
-approved as a stable release; v0.6.0 remains the published download. The preview
-does not establish improved biological accuracy. Local testing and approval are
-required before creating a v0.7.0 tag or publishing its installer.
+This README describes the current revision. Version history is in the
+[changelog](CHANGELOG.md).
 
-The dev2 preview fixes the initial preview/projection discrepancy and adds optional
-multiscale prominence scores with compact Z evidence. Its predefined control
-comparison **failed the separation/preservation trade-off**; legacy defaults are
-retained. See [local preview testing and limitations](docs/v070-preview.md).
+## Analyze and review images
 
-**Source-only exploration: `0.7.0.dev4`.** A dev2 loss audit and a new 60/40
-development/validation comparison tested enrichment, optional matched controls and
-an intensity-mixture diagnostic. None established the required biological trade-off;
-no product method or default changed, and no new installer was built. The last
-packaged preview remains `0.7.0.dev2`. See the versioned
-[BEFORE dev2 / AFTER dev4 report](docs/v070-enrichment-exploration.md).
+1. Open **PNC Counter** and complete image-engine setup if prompted.
+2. Drag in images or a folder, or use **Add images** / **Add folder**. Filenames
+   appear immediately; counts appear when processing finishes.
+3. Check the DAPI and PNC channel previews and the selected time and position.
+   Generic channel names may need a one-time confirmation.
+4. Choose the output folder and click **Analyze images**.
+5. Open a completed analysis to inspect nuclei, candidate PNCs and automatic calls.
+   Adjust the local enrichment threshold, correct individual calls as needed,
+   then **Save new revision**.
 
-**Accuracy status:** automatic PNC classification still needs calibration and
-manual review. HeLa control-folder testing found substantial positive calls in
-the negative group and very few in the small-PNC group. SAM finds nucleus
-boundaries; a separate threshold rule makes the PNC calls. Successful installation
-and analysis tests do not establish biological accuracy.
+The input preview and analysis use the same selected maximum projection. Display
+contrast only changes what you see; it does not change measured intensities.
+Technical model, acquisition, calibration and protocol settings are under
+**Advanced settings**.
 
-Replaying the two existing MATLAB segmentations reproduces the recorded counts
-exactly (67/76 and 42/45), but that checks migration parity on those examples.
-SAM 2.1 segmentation and the PNC classification rule require validation against
-reviewed controls before claiming improved accuracy. See [validation](docs/validation.md).
+## Adjust the local enrichment threshold
 
-## Install
+The review window provides a **Local enrichment threshold** slider and a numeric
+fold-enrichment value. The default is **1.80x**.
 
-### Windows installer (recommended for desktop users)
+| Adjustment | Expected effect |
+| --- | --- |
+| Lower the threshold | More sensitive; more candidates and cells may be called PNC-positive. |
+| Raise the threshold | Stricter; fewer candidates and cells are called PNC-positive. |
+| Reset to 1.8x | Restore the default threshold. |
 
-For **64-bit Windows 10/11**:
+The method compares the median raw intensity in a candidate's central **3x3 pixel
+neighborhood** with the median intensity in a surrounding reference ring inside
+its nucleus. A cell is automatically PNC-positive when at least one eligible
+candidate reaches the selected threshold. Physical image calibration is used
+when available; fallback scale and reference-support warnings are recorded.
 
-1. [Download the installer](https://github.com/whyeo/pnc-counter/releases/download/v0.6.0/PNC-Counter-0.6.0-Setup-x64.exe)
-   and run it. Python and the base image tools are included.
-2. Open **PNC Counter** from the Start menu and complete the guided setup.
-   Choose NVIDIA GPU when a compatible driver is detected, or CPU. CPU analysis
-   can be substantially slower. Choose the same model when comparing results.
-3. Allow the first-time setup to install PyTorch, official SAM 2.1, and the
-   selected model weights. This needs internet access and may take several minutes.
-   Setup tests actual model inference before saving the configuration.
-4. Add images or drag in a folder, check the channel preview, choose where to
-   save results, and click **Analyze images**. Review the detections before using
-   the counts.
+Threshold adjustments reuse prepared measurements and nucleus geometry. They do
+not rerun SAM. Counts and overlays update after a short pause. Review flagged
+references and incidental bright structures before accepting the counts.
 
-Users do not need PowerShell, a system Python, Git or a compiler. Later launches
-reuse the saved setup and can analyze offline. **Advanced settings → Set up / repair SAM**
-and the Start menu setup shortcut reopen the wizard. After a driver or hardware
-change, use **Advanced settings → Redetect hardware**.
+**Use for next analysis** reuses the selected PNC protocol for subsequent images.
+The method and threshold are recorded with saved results. Reopening an older
+analysis preserves its stored protocol until you explicitly change it. Existing
+preferences also retain the selected protocol; choose **Local enrichment** and
+**Use for next analysis** to switch an existing setup to the new method.
 
-The installer is unsigned, so Windows may display a SmartScreen prompt. The
-[release page](https://github.com/whyeo/pnc-counter/releases/tag/v0.6.0) includes
-`SHA256SUMS.txt` for checking the download. See the
-[Windows installation guide](docs/windows-installer.md) for prerequisites,
-repair, uninstall behavior, and build instructions.
+## Correct individual results
 
-The packaged desktop release is currently Windows-only. Python source installation
-is available for macOS/Linux, but a macOS app bundle has not been validated or released.
+Open **Review / correct selected** or **Open saved analysis**. Saved analyses can
+be reviewed using their stored images and masks without loading SAM or the
+original ND2 file.
 
-### Python package / developer installation
+- Select a nucleus to inspect its automatic call and any review flags.
+- Set a manual positive or negative PNC call when you disagree. Manual overrides
+  take precedence over automatic threshold changes.
+- Add a missed nucleus, redraw an incorrect boundary, split touching nuclei,
+  merge fragments, or reject an unsuitable detection. Undo and redo are available.
+- Save a **new revision** to preserve the original analysis, reviewed geometry,
+  threshold, manual decisions and correction history.
 
-Python 3.10+ is required (3.12+ for optional SAM 3). From this repository:
+See the [manual review guide](docs/manual-review.md) for geometry-editing tools
+and saved-file details.
+
+## Install and launch from source
+
+The base application requires **Python 3.10 or later**. New-image SAM analysis
+also requires a compatible PyTorch/SAM engine and downloaded model weights.
+
+Windows PowerShell, from this repository:
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install .
+.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+.venv\Scripts\python.exe -m pip install -e .
+.venv\Scripts\pnc-counter.exe
 ```
 
-On macOS/Linux activate with `source .venv/bin/activate`. Linux desktop users
-may need their distribution's `python3-tk` package; headless use does not need Tk.
+On macOS/Linux, use the corresponding `.venv/bin/python` and
+`.venv/bin/pnc-counter` commands. Linux desktop installations may require the
+system's Tk package. A packaged macOS application is not provided.
 
-The base installation contains NumPy, SciPy, scikit-image, nd2, tifffile, and
-Pillow, plus a small native Tk drag-and-drop wrapper. Deep-learning dependencies and model weights are separate so a small
-installation can read images, analyze existing masks, and use watershed.
+The base package uses NumPy, SciPy, scikit-image, nd2, tifffile, Pillow and
+Tkinter. Deep-learning packages and model weights are separate. CPU-only use is
+supported; a compatible accelerator can speed up nucleus segmentation.
 
-## SAM 2.1 setup for Python/source installations
+### Set up SAM for a source installation
 
-**Windows installer users can skip this section:** the first-run wizard handles
-these dependencies and model downloads.
-
-SAM 2.1 Tiny is the default: an updated SAM model with a 156 MB checkpoint.
-Install PyTorch for your hardware, then the pinned **official Meta SAM 2** source
-and checkpoint:
+SAM 2.1 Tiny is the default nucleus model. The following is the project's pinned
+CPU setup example for a compatible Python environment:
 
 ```powershell
-# CPU-only example; use the PyTorch installation selector for CUDA instead.
-python -m pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
-python tools/setup_sam2.py --install --model tiny
+.venv\Scripts\python.exe -m pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+.venv\Scripts\python.exe tools/setup_sam2.py --install --model tiny
 ```
 
-The setup script requires Git for the source installation. Downloads happen only
-when setup is explicitly run; analysis uses a local checkpoint and runs offline.
-Weights stay in the ignored `models/` folder. A SHA-256 manifest is saved beside
-the checkpoint. Small, Base Plus, and Large are also available through `--model`.
-SAM 2's CUDA extension is disabled for portability; inference does not require
-compiling native extensions. Meta recommends WSL for Windows; the Tiny backend
-was also tested with native Windows CPU inference in this repository.
+The setup script installs the official SAM 2 source and downloads the selected
+checkpoint; Git is required for this source-install route. For NVIDIA use a
+compatible CUDA-enabled PyTorch installation. Models are stored locally, and
+analysis can run offline after setup. Keep the same nucleus model when comparing
+PNC thresholds.
 
-Two tested presets are provided: [Tiny/CPU](examples/sam2-tiny-cpu.json) for a
-smaller model and [Small/CUDA](examples/sam2-small-cuda.json) for better boundary
-agreement on the local examples. Import either JSON in the desktop app, or use
-`--config examples/sam2-small-cuda.json` in the CLI. Small needs its own checkpoint
-(`python tools/setup_sam2.py --model small`) and CUDA-enabled PyTorch.
+Hardware detection and preferences are cached between launches. Use
+**Advanced settings** to redetect hardware or change the model after a driver or
+hardware update. Development builds use a separate **PNC Counter Preview**
+preferences profile.
 
-SAM 3/3.1 is the newer family, but the official installation requires Python
-3.12+, PyTorch 2.7+, a CUDA GPU, and access to its gated checkpoints. Its text-based
-image segmentation is available experimentally through `--backend sam3`,
-`--device cuda`, `--checkpoint path/to/sam3.pt`, and `--sam3-prompt "cell nucleus"`.
-Install it in a separate environment following [Meta's instructions](https://github.com/facebookresearch/sam3).
-Use the **SAM 3 image checkpoint**, not the SAM 3.1 video multiplex checkpoint;
-the latter improves multi-object video tracking, which this 2D projection
-workflow does not use. The adapter has not been validated on these images.
+### Windows setup builds
 
-## Desktop app
+A setup executable includes the base Python application. Its first-run wizard
+installs the analysis engine and verifies the selected model. Users of such a
+build can follow its guided setup instead of the source commands above.
+
+The current v0.7 preview is awaiting local acceptance; this README does not link
+to an unreleased installer. See the [Windows build guide](docs/windows-installer.md)
+for packaging and setup details.
+
+## Batch command line
+
+The command-line interface uses the same analysis settings as the desktop app.
+Run `nucleus-analysis --help` for all options. Example with an installed SAM
+checkpoint:
 
 ```powershell
-pnc-counter
-# Equivalent:
-python -m nucleus_analysis --gui
+nucleus-analysis path/to/images --recursive --output results --backend sam2 --sam2-model tiny --checkpoint models/sam2.1_hiera_tiny.pt --device cpu --pnc-mode enrichment --pnc-enrichment-threshold 1.8
 ```
 
-Add images, add a folder, or drag multiple images/folders onto the drop area,
-table, or preview. Folders include nested acquisitions; duplicate paths and this
-app's result directories are excluded. Filenames appear immediately, with blank
-counts until each analysis completes. Select a row to see a raw channel preview,
-then click **Analyze images**. Completed rows show the analysis overlay and can
-be opened for correction. The separate Status column reports progress or errors.
+Export or import a protocol JSON when you need to reuse the same method,
+threshold and acquisition settings across a batch.
 
-The first launch checks usable CPU/CUDA/MPS hardware in the background and locates
-the selected model. Setup, analysis preferences, output folder, and confirmed
-channel mappings are saved in a versioned JSON preferences file. On Windows it is
-`%LOCALAPPDATA%/PNC Counter/preferences.json`; macOS uses
-`~/Library/Application Support/PNC Counter/`, Linux uses
-`$XDG_CONFIG_HOME/PNC Counter/` (default `~/.config/PNC Counter/`). Subsequent launches
-reuse the hardware profile without importing Torch. Changes to Python or runtime
-package versions invalidate it automatically. After installing a driver or changing
-hardware, use **Advanced settings → Redetect hardware**. Auto selects an available
-accelerator while keeping the chosen segmentation model and scientific rules.
+## Results
 
-Obvious DAPI/PNC channel names can be identified automatically. Generic marker
-names such as TxRED require an initial confirmation with thumbnails; **Check
-channels** changes a saved mapping. Mapping signatures include channel names,
-axis layout, channel count and time/position counts. Multi-time/position images
-require an explicit initial selection; this version analyzes one selected time
-and position. Preview contrast does not affect measured intensities. Physical
-calibration comes from ND2/OME metadata when present; unknown scale is not guessed.
+Each image has its own results directory. Outputs include:
 
-Technical settings, protocol JSON import/export, optional manual acquisition
-indices, and verified Tiny/Small checkpoint downloads are under **Advanced
-settings**. The Windows installer edition has **Set up / repair SAM** for the
-one-time engine installation; Python/wheel users can use the manual instructions
-above. Model downloads are explicit; analysis works offline.
-
-The progress display shows finished images separately from the current step:
-loading, finding nuclei, measuring PNC, and saving. Elapsed time updates while work
-continues; a rough remaining-time estimate appears after the first file. **Stop
-after this image** preserves finished results and retains unprocessed rows.
-Changing PNC thresholds reuses both the projection cache and segmentation cache;
-source path, size, modification time, reader version and channel/time/position
-selection invalidate projections. Per-file failures are saved in `errors.json`.
-
-### Correct nuclei manually
-
-Select a completed result and click **Review / correct selected** (or double-click
-the result). **Open saved analysis** reopens an original or reviewed
-`analysis.json`, without reading raw ND2 files or loading SAM.
-
-- Click to select a nucleus; Ctrl+click selects several. Zoom with the wheel,
-  pan with the middle mouse button, and switch between DAPI/PNC/threshold views.
-- **Add** outlines a missed nucleus. **Redraw** replaces the selected boundary.
-  Click vertices or drag freehand, then press Enter to finish; Esc cancels.
-- **Reject / exclude** removes an incorrect detection from the count but keeps
-  it visible. **Flag for follow-up** highlights it yellow while keeping it counted.
-  Accept restores a rejected nucleus; Delete removes its geometry from the review.
-- **Split** outlines one part of a selected nucleus; the remaining pixels form
-  the other part. **Merge** combines selected detections. Undo/redo and reset to
-  the original are available.
-- Counts update immediately. **Save new revision** writes corrected statistics,
-  images, a label TIFF, and correction history in a new directory. The original
-  analysis and its batch summary are preserved. Reopen the new `analysis.json`
-  to continue reviewing later.
-
-See the [review guide](docs/manual-review.md) for overlap rules, stable IDs,
-keyboard shortcuts, and saved-file details. Proposed next improvements are
-prioritized in the [roadmap](docs/roadmap.md).
-
-### Accuracy workflow and additional analysis modes
-
-- **Advanced settings → Nuclei / PNC / Acquisition** includes explicit border exclusion, nucleus area
-  in µm² from ND2/OME calibration or manual pixel sizes, and a separate candidate
-  PNC spot mode. Default pixel counting is unchanged.
-- The sidebar now prioritizes uncertain/unreviewed/flagged objects and records
-  notes, reviewer names, verified status, and manual PNC calls.
-- **Add verified reference** registers completed reviews into grouped
-  validation/test sets. `nucleus-benchmark` reports instance/PNC F1/IoU and
-  count/percentage errors with source hashes.
-
-See the [accuracy workflow guide](docs/accuracy-workflow.md) for definitions,
-examples, and validation limits. Reference sets require explicit human review;
-model-produced masks are not automatically treated as ground truth.
-
-### When PNC-positive and PNC-negative controls overlap
-
-The default `pnc_mode=pixels` calls a nucleus positive when at least
-`positive_threshold` thresholded PNC pixels lie inside it (default: 10). Those
-pixels do not have to form one connected punctum. Background fluctuations or
-unrelated bright structures can therefore contribute to a positive call, while
-weak or small PNCs can be missed.
-
-- **Image threshold** changes which PNC pixels are foreground; **Positive threshold**
-  changes how many foreground pixels are needed per nucleus. Neither changes
-  the SAM nucleus boundaries.
-- The local **Image threshold** control preserves the legacy formula. Its 0–100
-  range changes the local-mean multiplier only from 1.5 to 1.6, so large changes
-  in the displayed setting can have little effect on the result.
-- Compare negative controls, clear positive controls, and small/weak PNC examples
-  acquired under matching conditions. Check channel assignments and review the
-  **PNC** and **PNC threshold** views alongside the nucleus boundaries.
-- Raising a pixel cutoff may reduce background calls while also losing small
-  PNCs. The optional `pnc_mode=spots` groups foreground pixels into candidate
-  puncta and adds size/count filters, but it uses the same initial threshold and
-  is not a validated solution to control separation.
-- To correct an individual call, select the nucleus in the review editor and
-  use **Reviewer / note / PNC call** to choose positive or negative, then
-  **Save new revision**. The automatic result is preserved separately.
-
-Use reviewed examples to choose settings, then evaluate those settings on
-separate fields. Folder names describe sample groups; they are not verified
-per-nucleus labels. The app currently has no automatic control-based threshold
-calibration or calibrated PNC confidence score.
-
-#### Try the v0.7 local preview
-
-The preview installs as **PNC Counter Preview**, alongside the stable app, with
-separate preferences and model setup. To test just the new PNC detector, choose
-**Set up later**, then **Open saved analysis** and select an existing v0.6.0
-`analysis.json`. This uses saved projections and nuclei and does not require SAM.
-
-1. In the review window, choose **Multiscale prominence (preview)** in **PNC sensitivity**.
-   **Background-aware (preview)** retains the earlier adaptive-v1 method.
-2. Move the slider toward **Stricter** or **More sensitive**. The overlay, candidate
-   spots, and counts update after a short pause. Nucleus boundaries stay fixed.
-3. Inspect the **PNC**, **PNC threshold**, and **DAPI + PNC** views. Confirm small
-   puncta and check negative controls; more calls alone do not mean better detection.
-4. Use **Save new revision** to keep the calls and sensitivity value. This preserves
-   the original analysis. Manual PNC overrides remain in effect.
-5. **Use for next analysis** saves the PNC settings for subsequent analyses.
-   To process new raw images, complete the preview's SAM setup first.
-
-Projection-only saved analyses are labeled as 2D. **Load Z evidence from source**
-can add compact per-plane measurements without changing nuclei when raw files are
-available. **Inspect candidate Z plane** is inspection-only; the saved calls stay
-fixed. **Marker display range** allows matching contrast across images. See the
-[dev2 guide](docs/v070-preview.md) for source verification and fallback behavior.
-
-The new method estimates intranuclear background and robust noise, then selects
-connected candidate puncta by their signal strength. The slider spans a broad
-logarithmic score range; it is not the old 0–100 legacy multiplier control.
-Candidate geometry is cached, so dragging the slider does not rerun SAM or
-rebuild the image measurements. **Spot min/max area**, **Spot min distance**, and
-**Min spot count** remain available in Advanced settings. Calibrated images use
-physical smoothing/background scales; uncalibrated images use pixel defaults.
-
-The detector scores bright puncta; it does not verify nucleolar identity or
-produce a calibrated probability. Early real-control testing still showed excess
-calls in negative fields, so the legacy default is retained. Saved protocols
-remain explicit about which method generated their results. Further improvements
-need visual validation of positive/negative puncta, including genuinely small
-PNCs. The optional spot-check does not train a model or become a required labeling step.
-
-Developers can build the isolated local preview with:
-
-```powershell
-python tools/build_windows.py --preview --bootstrap-compiler --require-clean
-```
-
-Stable-release validation rejects `.dev` versions; preview build metadata has
-no stable tag. Preview assets are written under `dist/preview/`.
-
-#### Preliminary HeLa control experiment: 30% tuning / 70% validation
-
-A reproducible comparison used 11 whole fields for tuning and 26 held-out
-fields for validation, stratified across the three HeLa folders. Nucleus
-geometry stayed fixed. The tuning search compared seven pixel cutoffs and 120
-background-aware peak rules; parameters were frozen before held-out evaluation.
-
-| Held-out group | Fields | v0.6.0: 10 pixels | Tuning-selected: 100 pixels |
-| --- | ---: | ---: | ---: |
-| PNC negative | 7 | 24.6% | 0.3% |
-| PNC positive | 12 | 84.7% | 73.7% |
-| PNC small | 7 | 8.2% | 0.0% |
-
-Values are the mean percentage of nuclei called positive per image field,
-**not sensitivity, specificity, or accuracy**. The selected cutoff reduces
-negative-group calls but loses all small-PNC calls, so it is **not adopted**.
-The tested background-aware rules did not solve that trade-off on tuning data.
-The released defaults remain unchanged.
-
-The split keeps visually inspected example fields in tuning and checks for
-identical DAPI/PNC projection pairs. Baseline summaries were examined before the
-split. Specimen relationships are unknown, so this is preliminary field-level
-validation, not independent-specimen validation. Folder names are weak labels;
-reviewed per-nucleus PNC calls and punctum annotations are needed for the next
-detector comparison. PNC identification also depends on punctate structure and
-nucleolar location, not brightness alone ([example scoring definition](https://pmc.ncbi.nlm.nih.gov/articles/PMC2640956/)).
-
-For developers, [the research comparison tool](tools/pnc_control_experiment.py)
-uses exported analyses whose source parent folders are `PNC negative`,
-`PNC positive`, and `PNC small`. It records the split, export hashes, extracted
-measurements, frozen parameters, and held-out results separately:
-
-```powershell
-python tools/pnc_control_experiment.py prepare --results results --output validation/local/hela-30-70
-python tools/pnc_control_experiment.py extract --output validation/local/hela-30-70
-python tools/pnc_control_experiment.py fit --output validation/local/hela-30-70
-python tools/pnc_control_experiment.py validate --output validation/local/hela-30-70
-```
-
-This tool is an experiment, not an automatic calibration feature of the desktop app.
-
-## Batch analysis
-
-```powershell
-python -m nucleus_analysis "data" --recursive --checkpoint models/sam2.1_hiera_tiny.pt --output results --cache results/cache
-
-# Explicit lightweight alternative, with no model or PyTorch:
-python -m nucleus_analysis "data" --backend watershed --output results
-
-# Replay a saved MATLAB segmentation to check migration parity:
-python -m nucleus_analysis "IMG1.nd2" --masks "IMG1_segmentation.mat" --output results
-
-# Save settings without processing; all fields are available via CLI or JSON:
-python -m nucleus_analysis --save-config settings.json
-python -m nucleus_analysis "data" --config settings.json --checkpoint models/sam2.1_hiera_tiny.pt
-```
-
-Each image gets its own output directory (including a path-derived suffix to
-avoid collisions between identical names in different folders):
-
-| Output | Contents |
+| Output | Purpose |
 | --- | --- |
-| `summary.csv` (batch root) | Positive, negative, rejected, total, percentage, output path |
-| `errors.json` (batch root) | Failed files and error messages; CLI exits nonzero if any fail |
-| `nuclei.csv` | Per-nucleus shape, intensity, centroid, positive-pixel count, classification |
-| `analysis.json` | Effective settings, input metadata, backend/import provenance, counts |
-| `images.npz` | Projections, threshold image, and numbered classification masks |
-| `nuclei_masks.npz` | Exact retained candidate geometry, including overlaps, for review/replay |
-| `visualization.png` | DAPI, numbered/classified nuclei, raw PNC, thresholded PNC |
+| `nuclei.csv` | Per-nucleus measurements, automatic calls and review information. |
+| `spots.csv` | Candidate PNC measurements when produced by the selected method. |
+| `visualization.png` | Image overlays for checking the analysis. |
+| `analysis.json` | Saved configuration and provenance used when reopening the analysis. |
+| Saved images and nucleus masks | Reproducible review and remeasurement without rerunning segmentation. |
 
-Only one input image and its candidate masks are retained at a time; ND2 stacks
-are projected in two streaming passes. Candidate masks are stored as sparse pixel
-indices rather than full-frame binary arrays. Caches use projection content,
-checkpoint content, and segmentation settings, so PNC threshold adjustments can
-reuse masks safely. Explicit `--masks` import records its source and checks shape;
-the user is responsible for choosing masks belonging to that image.
+Batch results also include a summary; failed inputs are recorded separately.
+Reviewed revisions are saved in new directories rather than overwriting original
+results.
 
-## Analysis conventions
+## Interpretation
 
-- Default channels: DAPI 0, PNC 1 (zero-based). Override with `--dapi-channel` and
-  `--pnc-channel`. Channel names are recorded for ND2, never guessed.
-- DAPI maximum projection is used for segmentation, quantized DAPI mean for
-  measurements, and PNC maximum for positivity, matching the MATLAB GUI.
-- Default nucleus area: 5,000–50,000 pixels; positive nucleus: at least 10
-  thresholded PNC pixels. These are dataset-specific **pixel** values, not physical
-  area or a count of individual PNC puncta. Match magnification/pixel size or tune
-  them for another acquisition.
-- Local Gaussian threshold defaults to the old GUI's setting 90, neighborhood 21.
-  Its Gaussian sigma and integer intensity scaling reproduce MATLAB `adaptthresh`.
-  Global mode preserves the original median-based formula; its old GUI setting
-  was 70, so use `--threshold-mode global --image-threshold 70` for that preset.
-  Local mode expects floating-point PNC inputs in [0, 1]; integer inputs use
-  their dtype's full scale (e.g. 65,535 for uint16), matching MATLAB.
-- The old headless script differed from the GUI: positivity 30, neighborhood 7,
-  and SVM rejection enabled. Use `--positive-threshold 30 --neighborhood-size 7
-  --quality-filter legacy-svm` to select those conventions.
-- The legacy GUI defined an SVM loader but never called it. The Python default
-  therefore has `--quality-filter none`. The converted SVM is optional and needs
-  no scikit-learn. Its shape features may be inappropriate for a new model or
-  acquisition; review rejected masks before adopting it.
-- Centroids are one-based X/Y pixel coordinates to match MATLAB tables. Labels
-  are unsigned 32-bit integers. Empty fields report percentage `null`/blank,
-  rather than division by zero.
-- Z is projected. T (time) and P (position) are selected explicitly, default 0,
-  using `--time-index` and `--position-index`. Each invocation analyzes one
-  selection per file. Unsupported nonsingleton axes are rejected. TIFF must have
-  C/Y/X axes; use `--axes ZCYX` when metadata is ambiguous. RGB is not interpreted
-  as multichannel microscopy automatically.
-- Overlap suppression preserves the old small-mask-first, >10% overlap rule.
-  Tied intensity percentile features use finite empirical ranks; these unused
-  SVM features intentionally differ from MATLAB's brittle repeated quantile bins.
+The 1.8x threshold is an adjustable starting point for human-vetted counts, not a
+calibrated probability or a claim of 95% accuracy. Bright artifacts, structured
+staining, weak signal, saturation and inadequate local references can affect
+calls. Review both positive and negative examples and inspect the corresponding
+raw images. Sample-folder names do not establish the identity of every cell.
 
-## Python API
+Changing the PNC threshold does not repair an incorrect nucleus boundary. Review
+segmentation and PNC calls as separate decisions.
 
-```python
-from nucleus_analysis import AnalysisConfig, count_pnc
-
-config = AnalysisConfig(checkpoint="models/sam2.1_hiera_tiny.pt")
-result = count_pnc("sample.nd2", config=config)
-print(result.basic_stats)
-for nucleus in result.full_stats:
-    print(nucleus["MaskID"], nucleus["NumberCh2PixelsPositive"])
-
-# Saved masks can also be analyzed without loading a model:
-result = count_pnc("sample.nd2", masks="sample_segmentation.mat")
-```
-
-`analyze(Projections(...), config, masks=...)` supports in-memory images. Candidate
-masks use row-major, zero-based flat pixel indices; `load_masks` converts the
-one-based, column-major indices in old MATLAB caches automatically.
-
-## Test and distribute
+## Development
 
 ```powershell
 python -m pip install -e ".[dev]"
 python -m pytest
-python -m ruff check src tests tools
-python -m build
-python -m pip install dist/nucleus_analysis-0.7.0.dev4-py3-none-any.whl
+python -m ruff check .
 ```
 
-The wheel contains only Python code and the small exported SVM, with no raw data,
-MATLAB code, JVM, neural weights, or bundled PyTorch. Distribute it with the
-appropriate dependencies and a separately downloaded checkpoint for offline use.
-The repository also builds a Windows installer with a private Python runtime:
-`python tools/build_windows.py --preview --bootstrap-compiler` for this development
-version. A manually triggered
-**Windows installer** GitHub Actions workflow builds the same installer, verifies
-installation and a sample ND2 analysis on a MATLAB-free Windows runner, and
-attaches versioned assets to matching version-tag releases. Manual runs prepare
-drafts. See the [release guide](docs/releases.md) for source-commit provenance,
-checksums, the local-build fallback and website download links.
-CI tests the base package on Windows/Linux with Python 3.10/3.12; real microscopy
-data tests skip when private local data are absent. The Windows installer is
-unsigned. The v0.6.0 Windows installer passed installation, guided CPU/SAM setup,
-ND2 analysis/export, and uninstallation on a GitHub-hosted Windows runner without
-MATLAB. Its release assets include source-commit provenance and a verification
-report. This is a functional smoke test, not a validation of PNC classification.
-
-The original implementation is preserved in [legacy/matlab](legacy/matlab) for
-historical comparison. [Migration notes](docs/migration.md) describe deliberate
-differences and the one-time MATLAB export tool. Runtime workflows are Python-only.
+The [progress tracker](docs/v070-progress.md) records implementation and local
+acceptance status. Historical changes and experiments belong in
+[CHANGELOG.md](CHANGELOG.md), rather than this usage guide.
 
 ## License
 
-Application code is [MIT licensed](LICENSE). SAM models, code, PyTorch, and other
-dependencies retain their own licenses; consult Meta's terms when redistributing
-weights. See [CHANGELOG](CHANGELOG.md).
+[MIT](LICENSE).

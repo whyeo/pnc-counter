@@ -56,7 +56,7 @@ def visualization(result):
     panels = [Image.fromarray(result.images["ch1_max"]).convert("RGB"), overlay(result),
               Image.fromarray(scale_uint8(result.images["ch2"])).convert("RGB"),
               Image.fromarray(result.images["ch2_thresh"].astype(np.uint8) * 255).convert("RGB")]
-    if result.config.pnc_mode in ("spots", "adaptive", "prominence"):
+    if result.config.pnc_mode in ("spots", "adaptive", "prominence", "enrichment"):
         draw_spots = ImageDraw.Draw(panels[3])
         for spot in result.spots or []:
             x, y = spot["CentroidX"] - 1, spot["CentroidY"] - 1
@@ -77,12 +77,9 @@ def export_result(result, directory, *, provenance=None):
     extra_columns = list(dict.fromkeys(key for row in result.full_stats for key in row
                                       if key not in STAT_COLUMNS))
     write_csv(directory / "nuclei.csv", result.full_stats, STAT_COLUMNS + extra_columns)
-    try:
-        app_version = version("nucleus-analysis")
-    except PackageNotFoundError:
-        from . import __version__
+    from . import __version__
 
-        app_version = __version__ + "+source"
+    app_version = __version__
     metadata = {"version": app_version, "created_utc": datetime.now(timezone.utc).isoformat(),
                 "summary": result.basic_stats,
                 "config": result.config.to_dict(), "input": result.metadata,
@@ -116,6 +113,17 @@ def export_result(result, directory, *, provenance=None):
             "effective_evidence": "per-plane local prominence" if "pnc_z_score" in result.images and result.config.pnc_z_policy == "auto"
                                   else "2D projection fallback; no Z evidence used",
             "validation_status": "experimental; biological separation not established"}
+    if result.config.pnc_mode == "enrichment":
+        from .local_enrichment import ALGORITHM
+
+        metadata["pnc_detection"] = {
+            "algorithm": ALGORITHM, "local_enrichment_threshold": result.config.pnc_enrichment_threshold,
+            "score_units": "raw3x3 median / local reference median; not a probability",
+            "reference": "eroded in-nucleus annulus12-20 small-sigma units; >=64pixels",
+            "candidate_support": "fixed growth proposal geometry; stored area >=3pixels",
+            "aggregation": "at least one eligible candidate reaches threshold",
+            "reference_variation": "descriptive MAD, not calibrated instrument noise",
+            "review": "human vetting required; quality warnings retained"}
     metadata["dependencies"] = {}
     for package in ("numpy", "scipy", "scikit-image", "nd2", "tifffile", "Pillow",
                     "torch", "torchvision", "SAM-2", "sam3"):
@@ -128,7 +136,7 @@ def export_result(result, directory, *, provenance=None):
     np.savez_compressed(directory / "images.npz", **result.images)
     if result.masks is not None:
         save_masks(directory / "nuclei_masks.npz", result.masks, result.images["ch1_max"].shape)
-    if result.config.pnc_mode in ("spots", "adaptive", "prominence"):
+    if result.config.pnc_mode in ("spots", "adaptive", "prominence", "enrichment"):
         columns = ["SpotID", "Area", "CentroidX", "CentroidY", "AnchorPixel", "NucleusID"]
         columns += list(dict.fromkeys(key for row in result.spots or [] for key in row if key not in columns))
         write_csv(directory / "spots.csv", result.spots or [],

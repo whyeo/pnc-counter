@@ -16,7 +16,7 @@ from scipy import ndimage as ndi
 from .imaging import display_uint8
 from .review import ReviewSession
 
-PNC_METHODS = {"Multiscale prominence (preview)": "prominence", "Background-aware (preview)": "adaptive",
+PNC_METHODS = {"Local enrichment": "enrichment", "Multiscale prominence (preview)": "prominence", "Background-aware (preview)": "adaptive",
                "Legacy pixel count": "pixels", "Legacy spot count": "spots"}
 
 
@@ -50,7 +50,7 @@ def render_review(session, selected=(), channel="DAPI", show_masks=True, contras
         edge = local & ~ndi.binary_erosion(local, structure=np.ones((3, 3)), border_value=0)
         ey, ex = np.nonzero(edge)
         base[ey + y0, ex + x0] = edge_color
-    if session.config.pnc_mode in ("adaptive", "prominence"):
+    if session.config.pnc_mode in ("adaptive", "prominence", "enrichment"):
         from skimage.segmentation import find_boundaries
 
         base[find_boundaries(session._spot_labels, mode="inner")] = (40, 255, 100)
@@ -78,7 +78,9 @@ class ReviewEditor:
         self.inspection_plane = None
         self.inspection_z = None
         self.window = tk.Toplevel(parent)
-        self.window.title(f"Review nuclei - {self.directory.name}")
+        from . import __version__
+
+        self.window.title(f"PNC Counter {__version__} - Review nuclei")
         self.window.geometry("1180x820")
         self.window.minsize(950, 650)
         self.window.protocol("WM_DELETE_WINDOW", self.close)
@@ -136,7 +138,7 @@ class ReviewEditor:
         side_window = side_canvas.create_window(0, 0, window=sidebar, anchor="nw")
         sidebar.bind("<Configure>", lambda _e: side_canvas.configure(scrollregion=side_canvas.bbox("all")))
         side_canvas.bind("<Configure>", lambda e: side_canvas.itemconfigure(side_window, width=e.width))
-        tuning = ttk.LabelFrame(sidebar, text="PNC sensitivity", padding=6)
+        tuning = ttk.LabelFrame(sidebar, text="PNC threshold", padding=6)
         tuning.pack(fill="x", pady=(0, 8))
         self.pnc_method = tk.StringVar(value=next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
         method = ttk.Combobox(tuning, textvariable=self.pnc_method, values=tuple(PNC_METHODS), state="readonly", width=27)
@@ -144,19 +146,36 @@ class ReviewEditor:
         method.pack(fill="x")
         method.bind("<<ComboboxSelected>>", self.schedule_pnc_preview)
         self.pnc_sensitivity = tk.DoubleVar(value=self.session.config.pnc_sensitivity)
+        self.pnc_enrichment = tk.DoubleVar(value=self.session.config.pnc_enrichment_threshold)
         self.pnc_slider = ttk.Scale(tuning, from_=0, to=100, variable=self.pnc_sensitivity,
                                     command=self.schedule_pnc_preview)
         self.pnc_slider.pack(fill="x", pady=5)
-        ttk.Label(tuning, text="Stricter                 More sensitive").pack(fill="x")
+        self.pnc_direction = tk.StringVar()
+        ttk.Label(tuning, textvariable=self.pnc_direction).pack(fill="x")
+        self.enrichment_controls = ttk.Frame(tuning)
+        self.enrichment_controls.pack(fill="x", pady=3)
+        ttk.Label(self.enrichment_controls, text="Local enrichment threshold").pack(anchor="w")
+        number_row = ttk.Frame(self.enrichment_controls)
+        number_row.pack(fill="x")
+        self.enrichment_entry = ttk.Spinbox(number_row, from_=0.1, to=20, increment=.05,
+            textvariable=self.pnc_enrichment, width=7, command=self.schedule_pnc_preview)
+        self.enrichment_entry.pack(side="left")
+        ttk.Label(number_row, text=" x local background").pack(side="left")
+        self.enrichment_entry.bind("<Return>", self.schedule_pnc_preview)
+        self.enrichment_entry.bind("<FocusOut>", self.schedule_pnc_preview)
+        self.button(self.enrichment_controls, "Reset to 1.8x", self.reset_enrichment).pack(fill="x", pady=3)
         self.pnc_readout = tk.StringVar()
-        ttk.Label(tuning, textvariable=self.pnc_readout, wraplength=225).pack(fill="x", pady=4)
+        self.pnc_readout_label = ttk.Label(tuning, textvariable=self.pnc_readout, wraplength=225)
+        self.pnc_readout_label.pack(fill="x", pady=4)
         ttk.Label(tuning, text="Preview uses saved nuclei. Save a new revision to keep these calls. Manual calls are retained.",
                   wraplength=225).pack(fill="x")
         self.evidence_readout = tk.StringVar()
         ttk.Label(tuning, textvariable=self.evidence_readout, wraplength=225).pack(fill="x", pady=4)
-        self.button(tuning, "Load Z evidence from source", self.load_z_evidence).pack(fill="x")
-        self.button(tuning, "Inspect candidate Z plane", self.inspect_z_plane).pack(fill="x")
-        self.button(tuning, "Return to maximum projection", self.return_projection).pack(fill="x")
+        self.z_controls = ttk.Frame(tuning)
+        self.z_controls.pack(fill="x")
+        self.button(self.z_controls, "Load Z evidence from source", self.load_z_evidence).pack(fill="x")
+        self.button(self.z_controls, "Inspect candidate Z plane", self.inspect_z_plane).pack(fill="x")
+        self.button(self.z_controls, "Return to maximum projection", self.return_projection).pack(fill="x")
         if on_protocol:
             self.button(tuning, "Use for next analysis", self.use_pnc_protocol).pack(fill="x", pady=4)
         ttk.Label(sidebar, text="Select nuclei (Ctrl+click for multiple)", wraplength=225).pack(anchor="w")
@@ -312,14 +331,44 @@ class ReviewEditor:
             self.window.after_cancel(self._pnc_after)
         self._pnc_after = self.window.after(180, self.launch_pnc_preview)
 
+    def reset_enrichment(self):
+        self.pnc_enrichment.set(1.8)
+        self.schedule_pnc_preview()
+
+    def configure_pnc_controls(self, config):
+        enrichment = config.pnc_mode == "enrichment"
+        adaptive = config.pnc_mode in ("adaptive", "prominence")
+        if enrichment:
+            self.pnc_slider.configure(from_=min(1., config.pnc_enrichment_threshold),
+                to=max(5., config.pnc_enrichment_threshold), variable=self.pnc_enrichment, state="normal")
+            if not self.enrichment_controls.winfo_manager():
+                self.enrichment_controls.pack(fill="x", pady=3, before=self.pnc_readout_label)
+            self.pnc_direction.set("More sensitive                    Stricter")
+            self.pnc_readout.set(f"Local enrichment threshold: {config.pnc_enrichment_threshold:.2f}x")
+        else:
+            self.enrichment_controls.pack_forget()
+            self.pnc_slider.configure(from_=0, to=100, variable=self.pnc_sensitivity,
+                                      state="normal" if adaptive else "disabled")
+            self.pnc_direction.set("Stricter                 More sensitive")
+            self.pnc_readout.set(f"Sensitivity: {config.pnc_sensitivity:.1f} / 100" if adaptive
+                else "Stored pixel/spot protocol. Advanced settings contains its thresholds.")
+        if config.pnc_mode == "prominence":
+            if not self.z_controls.winfo_manager():
+                self.z_controls.pack(fill="x")
+        else:
+            self.z_controls.pack_forget()
+
     def launch_pnc_preview(self):
         self._pnc_after = None
         mode = PNC_METHODS[self.pnc_method.get()]
-        config = replace(self.session.config, pnc_mode=mode,
-                         pnc_sensitivity=round(self.pnc_sensitivity.get(), 1))
-        self.pnc_slider.configure(state="normal" if mode in ("adaptive", "prominence") else "disabled")
-        self.pnc_readout.set(f"Sensitivity: {config.pnc_sensitivity:.1f} / 100" if mode in ("adaptive", "prominence")
-                             else "Select a preview detector to use the slider. Legacy thresholds are in Advanced settings.")
+        try:
+            config = replace(self.session.config, pnc_mode=mode,
+                pnc_sensitivity=round(self.pnc_sensitivity.get(), 1),
+                pnc_enrichment_threshold=round(self.pnc_enrichment.get(), 2))
+        except (ValueError, tk.TclError):
+            self.status.set("Enter a positive local enrichment threshold, such as 1.80.")
+            return
+        self.configure_pnc_controls(config)
         self._pending_pnc = (self._pnc_token, config)
         if self.busy or self._pnc_worker and self._pnc_worker.is_alive():
             return
@@ -473,10 +522,8 @@ class ReviewEditor:
         self._syncing_pnc = True
         self.pnc_method.set(next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
         self.pnc_sensitivity.set(self.session.config.pnc_sensitivity)
-        adaptive = self.session.config.pnc_mode in ("adaptive", "prominence")
-        self.pnc_slider.configure(state="normal" if adaptive else "disabled")
-        self.pnc_readout.set(f"Sensitivity: {self.session.config.pnc_sensitivity:.1f} / 100" if adaptive
-                             else "Select a preview detector to use the slider. Legacy thresholds are in Advanced settings.")
+        self.pnc_enrichment.set(self.session.config.pnc_enrichment_threshold)
+        self.configure_pnc_controls(self.session.config)
         config = self.session.config
         info = self.session.projections.metadata.get("pnc_evidence", {})
         self.evidence_readout.set(
@@ -506,7 +553,9 @@ class ReviewEditor:
             self.detail.set(f"Nucleus {identifier}\nArea: {len(mask.pixels)} px\n"
                             f"Positive PNC pixels: {details[identifier]['positive_pixels']}\n"
                             f"PNC spots: {details[identifier]['spots']}\n"
-                            + (f"Relative PNC signal score: {details[identifier]['signal_score']:.1f}\n"
+                            + (f"Local enrichment: {details[identifier]['enrichment']:.2f}x\n"
+                               if "enrichment" in details[identifier] else
+                               f"Relative PNC signal score: {details[identifier]['signal_score']:.1f}\n"
                                if "signal_score" in details[identifier] else "") +
                             f"PNC call: {'automatic' if mask.pnc_override is None else 'manual positive' if mask.pnc_override else 'manual negative'}\n"
                             f"{'Verified' if mask.reviewed else 'Awaiting verification'}\n"
@@ -624,7 +673,7 @@ class ReviewEditor:
         if self.inspection_plane is not None:
             self.canvas.create_text(8, 8, text=f"Inspection only: Z{self.inspection_z}. Calls use the saved projection protocol.",
                                     fill="#ffff40", anchor="nw", tags="evidence_label")
-        if self.session.config.pnc_mode in ("spots", "adaptive", "prominence") and self.show_masks.get():
+        if self.session.config.pnc_mode in ("spots", "adaptive", "prominence", "enrichment") and self.show_masks.get():
             for spot in self.session._spot_rows:
                 x, y = (spot["CentroidX"] - 1) * self.scale, (spot["CentroidY"] - 1) * self.scale
                 self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, outline="#40ff80", width=2, tags="spots")

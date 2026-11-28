@@ -37,7 +37,8 @@ class AnalysisConfig:
     pixel_size_y_um: float | None = None
     border_policy: str = "include"
     border_margin: int = 0
-    pnc_mode: str = "pixels"
+    pnc_mode: str = "enrichment"
+    pnc_enrichment_threshold: float = 1.8
     pnc_sensitivity: float = 50.0
     pnc_z_policy: str = "auto"
     min_spot_count: int = 1
@@ -54,7 +55,7 @@ class AnalysisConfig:
             "quality_filter": ("none", "legacy-svm"),
             "sam2_model": ("tiny", "small", "base_plus", "large"),
             "border_policy": ("include", "exclude"),
-            "pnc_mode": ("pixels", "spots", "adaptive", "prominence"),
+            "pnc_mode": ("pixels", "spots", "adaptive", "prominence", "enrichment"),
             "pnc_z_policy": ("auto", "projection"),
         }
         for name, allowed in choices.items():
@@ -84,6 +85,10 @@ class AnalysisConfig:
             raise ValueError("image_threshold must be between 0 and 100")
         if isinstance(self.pnc_sensitivity, bool) or not math.isfinite(self.pnc_sensitivity) or not 0 <= self.pnc_sensitivity <= 100:
             raise ValueError("pnc_sensitivity must be finite and between 0 and 100")
+        if (isinstance(self.pnc_enrichment_threshold, bool)
+                or not math.isfinite(self.pnc_enrichment_threshold)
+                or self.pnc_enrichment_threshold <= 0):
+            raise ValueError("pnc_enrichment_threshold must be positive and finite")
         if not math.isfinite(self.watershed_sigma) or self.watershed_sigma <= 0:
             raise ValueError("watershed_sigma must be positive and finite")
         if self.device not in ("cpu", "cuda", "mps"):
@@ -112,4 +117,11 @@ class AnalysisConfig:
 
     @classmethod
     def load(cls, path):
-        return cls(**json.loads(Path(path).read_text(encoding="utf-8")))
+        return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
+
+    @classmethod
+    def from_dict(cls, values):
+        """Imported older protocols lacking a mode retain the pixel-count method."""
+        values = dict(values)
+        values.setdefault("pnc_mode", "enrichment" if "pnc_enrichment_threshold" in values else "pixels")
+        return cls(**values)

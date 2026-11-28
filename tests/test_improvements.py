@@ -25,7 +25,7 @@ def scene():
         rr, cc = disk(center, 3, shape=dapi.shape)
         pnc[rr, cc] = 5000
     projections = project_array(np.stack([dapi, pnc]), "CYX", metadata={"pixel_size_um": {"x": 0.5, "y": 0.25}})
-    config = AnalysisConfig(backend="watershed", min_nucleus_area=400, max_nucleus_area=2000,
+    config = AnalysisConfig(backend="watershed", pnc_mode="pixels", min_nucleus_area=400, max_nucleus_area=2000,
                             threshold_mode="global")
     return projections, config, masks
 

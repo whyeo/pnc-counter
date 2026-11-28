@@ -5,12 +5,33 @@ findings and the next approved work. **A completed experiment does not mean that
 its detector is ready for adoption.**
 
 Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev2**.
-Latest measured research source: **0.7.0.dev4**, commit
+Previous measured research source: **0.7.0.dev4**, commit
 `9f565cf57857f146742f2dd3bc7335a1ddff1854` (step 7; documentation-only
 changes since step 4, with unchanged application algorithms). All frozen-method
 comparisons use app version **0.7.0.dev4**; rendering revisions are separate.
 No improved biological accuracy has been demonstrated. Final v0.7 publication
 requires the owner's local testing and explicit approval.
+
+## Current local implementation
+
+**0.7.0.dev5 implements the owner-approved 1.8x local enrichment default.**
+The desktop review window has a direct fold-threshold slider, numeric entry,
+reset, cached live counts and reusable PNC settings. Earlier analyses retain their
+stored protocols until explicitly switched. Owner inspection of the native UI is
+pending; no stable v0.7 tag or publication is approved.
+
+The bridge completed implementation locally after the v0.7 session handoff did
+not acknowledge delivery. The latest usage guide is [README.md](../README.md);
+version history is in [CHANGELOG.md](../CHANGELOG.md).
+
+Engineering checks: **175 tests passed**, Ruff passed, and all **1,391** retained
+nucleus enrichment maxima across **37** saved fields reproduced the explorer.
+At 1.8x, calls are negative-folder 59/299, positive-folder 666/810 and small-folder
+13/282. These are exploratory call rates, not measured classification accuracy.
+The native slider/save/reopen check passed without SAM; four warm updates on a
+1040x1392 field had median 0.562s including debounce and rendering. See the
+[local desktop screenshot](../validation/local/pnc-discrimination/v070-dev5/desktop-enrichment-ui.png).
+No new installer has been built; the packaged preview remains dev2.
 
 ## Progress table
 
@@ -36,8 +57,10 @@ requires the owner's local testing and explicit approval.
 | Interactive development review panel | Owner review complete; UI ready | PNC-DEV-REVIEW-01, rendering 3: 12/12 reviewed, 5 Positive / 7 Negative / 0 Unsure; bridge build/QA and owner review are distinct completed steps. | Preserve the immutable completed snapshot; a stale browser tab may still show zero. |
 | Owner review of the 12 additional targets | Complete; 12/12 | Immutable owner snapshot: 5 Positive (R01/R02/R03/R06/R10), 7 Negative (R04/R05/R07/R08/R09/R11/R12), 0 Unsure/missing, no notes. Labels cover indicated targets only. | Preserve the exact snapshot/hash; do not use a stale browser tab, latest pointer, zero-label smoke snapshot or isolated QA data as evidence. |
 | Descriptive contrast comparison of the additional panel | Done; exploratory descriptive result | DRC7-dev4-r1-20261128: median-ratio ranges 1.74094–4.81554x for 5 positives and 1.05186–1.18622x for 7 negatives; no observed range overlap. P/A/B/C kept separate. | R10 has one-sided reference support; all rings intersect permissive stored growth supports. Existing LocalContrast also separates these points; no validated cutoff or demonstrated detector improvement. |
-| Biological identification and detector adoption | Pending | Prior P/A/B/C and the separately analyzed 12 new target reviews provide exploratory evidence; no product detector adopted. | Structured-reference variation and plane adequacy remain unresolved; the selected development panel does not establish accuracy, a general cutoff or independent validation. |
-| Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review steps 5–7 and owner-panel reference limitations before expanding candidate generation, adding rejection rules or measuring validation again. |
+| Local enrichment default | Approved and implemented locally | dev5 new settings use the raw3x3/ring descriptor at 1.8x. Historical saved protocols remain reproducible. | Owner UI testing; broader biological accuracy remains unmeasured. |
+| Full-field app integration | Done locally | 1,391 nucleus maxima and automatic calls reproduce NE8 at 1.8x; CLI, review revisions and exports include the new protocol. | Human review and local acceptance; all previously examined fields remain exploratory. |
+| Native threshold interface | Ready for owner testing | Direct fold slider, numeric entry, reset1.8x, live counts/overlays and Use for next analysis. Source UI open locally. | Owner feedback before packaging/finalization. |
+| Latest-revision README and changelog | Done | README describes dev5 usage only; history remains in separate CHANGELOG.md. | Keep documentation aligned with later changes. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
 ## Interactive owner review and descriptive comparison: complete

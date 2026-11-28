@@ -18,7 +18,7 @@ def main():
     parser.add_argument("--analysis", required=True, type=Path)
     parser.add_argument("--workdir", required=True, type=Path)
     parser.add_argument("--runtime", type=Path)
-    parser.add_argument("--method", choices=("adaptive", "prominence"), default="adaptive")
+    parser.add_argument("--method", choices=("adaptive", "prominence", "enrichment"), default="adaptive")
     parser.add_argument("--load-z-evidence", action="store_true")
     args = parser.parse_args()
     if args.runtime:
@@ -50,24 +50,32 @@ def main():
                 wait(lambda: not editor.busy)
                 assert editor.session.projections.pnc_evidence, editor.status.get()
             prepared = None
-            for level in (0., 50., 100.):
+            levels = (1.2, 1.8, 2.5) if args.method == "enrichment" else (0., 50., 100.)
+            variable = editor.pnc_enrichment if args.method == "enrichment" else editor.pnc_sensitivity
+            attribute = "pnc_enrichment_threshold" if args.method == "enrichment" else "pnc_sensitivity"
+            for level in levels:
                 started = time.perf_counter()
-                editor.pnc_method.set("Multiscale prominence (preview)" if args.method == "prominence" else "Background-aware (preview)")
-                editor.pnc_sensitivity.set(level)
+                editor.pnc_method.set({"enrichment": "Local enrichment", "prominence": "Multiscale prominence (preview)",
+                                       "adaptive": "Background-aware (preview)"}[args.method])
+                variable.set(level)
                 editor.schedule_pnc_preview()
                 wait(lambda: not editor.busy and editor.session.config.pnc_mode == args.method
-                     and editor.session.config.pnc_sensitivity == level)
+                     and getattr(editor.session.config, attribute) == level)
                 current = editor.session.counts()[0]
                 if prepared is not None:
                     assert editor.session._adaptive_features is prepared
-                    assert current["n_positive"] >= timings[-1]["counts"]["n_positive"]
+                    if args.method == "enrichment":
+                        assert current["n_positive"] <= timings[-1]["counts"]["n_positive"]
+                    else:
+                        assert current["n_positive"] >= timings[-1]["counts"]["n_positive"]
                 prepared = editor.session._adaptive_features
-                timings.append({"sensitivity": level, "seconds": time.perf_counter()-started, "counts": current})
-            for level in [float(v) for v in range(5, 101, 5)]:
+                timings.append({("local_enrichment_threshold" if args.method == "enrichment" else "sensitivity"): level, "seconds": time.perf_counter()-started, "counts": current})
+            warm_levels = [1.8, 2., 1.6, 1.8] if args.method == "enrichment" else [float(v) for v in range(5, 101, 5)]
+            for level in warm_levels:
                 started = time.perf_counter()
-                editor.pnc_sensitivity.set(level)
+                variable.set(level)
                 editor.schedule_pnc_preview()
-                wait(lambda: not editor.busy and editor.session.config.pnc_sensitivity == level)
+                wait(lambda: not editor.busy and getattr(editor.session.config, attribute) == level)
                 assert editor.session._adaptive_features is prepared
                 warm.append(time.perf_counter()-started)
             assert all((editor.session.masks[i].pixels == pixels).all() for i, pixels in originals.items())
@@ -75,7 +83,7 @@ def main():
             editor.save_to(args.workdir / "revisions")
             wait(lambda: not editor.busy and editor.directory != previous)
             reopened = ReviewSession.open(editor.directory)
-            assert reopened.config.pnc_sensitivity == 100
+            assert getattr(reopened.config, attribute) == warm_levels[-1]
             assert reopened.counts()[0] == editor.session.counts()[0]
             assert (editor.directory / "spots.csv").is_file()
         report = {"passed": True, "version": nucleus_analysis.__version__, "installed_module": nucleus_analysis.__file__,

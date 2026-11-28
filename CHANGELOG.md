@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.7.0 local enrichment preview (0.7.0.dev5, unreleased)
+
+- Makes local enrichment, initially 1.8x, the PNC protocol for new analyses.
+  Candidate raw 3x3 intensity is compared with a reference ring within its nucleus.
+- Adds a fold-enrichment threshold slider for live review, with a numeric readout
+  and a reset to the default. Cached measurements allow threshold changes without
+  rerunning nucleus segmentation.
+- Retains explicit manual PNC overrides, stored protocols and immutable review
+  revisions. Existing analyses retain their original method until changed.
+- Keeps nucleus segmentation and PNC classification separate; local reference and
+  spatial-support warnings assist human review. No measured 95% accuracy claim.
+- Replaces the historical README narrative with a usage guide for the current
+  revision. Earlier releases and research checkpoints remain in this changelog
+  and the linked documentation.
+- Local preview only. Owner interface testing and explicit finalization are
+  required before a stable v0.7.0 release.
+
 ## v0.7.0 source exploration (0.7.0.dev3 / 0.7.0.dev4, not finalized)
 
 - Added exact dev2 candidate-loss instrumentation and bounded, one-factor ablations.

@@ -35,7 +35,7 @@ def synthetic_image():
         masks.append(np.ravel_multi_index((rr, cc), dapi.shape))
     pnc.ravel()[masks[0][:12]] = 5000
     projections = project_array(np.stack([dapi, pnc]), "CYX")
-    config = AnalysisConfig(backend="watershed", min_nucleus_area=500,
+    config = AnalysisConfig(backend="watershed", pnc_mode="pixels", min_nucleus_area=500,
                             max_nucleus_area=5000, threshold_mode="global", positive_threshold=10)
     return projections, masks, config
 
@@ -247,6 +247,6 @@ def test_local_matlab_regression(number, positive, total):
     masks = folder / f"IMG{number}_segmentation.mat"
     if not image.is_file() or not masks.is_file():
         pytest.skip("Local ND2 reference data are not distributed")
-    result = count_pnc(image, config=AnalysisConfig(backend="watershed"), masks=masks)
+    result = count_pnc(image, config=AnalysisConfig(backend="watershed", pnc_mode="pixels"), masks=masks)
     assert result.basic_stats["n_positive"] == positive
     assert result.basic_stats["n_total"] == total
