@@ -6,7 +6,7 @@ its detector is ready for adoption.**
 
 Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev2**.
 Latest measured research source: **0.7.0.dev4**, commit
-`6adb2e6a14de7b89923345e69bc79f9018fb2af4` (step 6; documentation-only
+`9f565cf57857f146742f2dd3bc7335a1ddff1854` (step 7; documentation-only
 changes since step 4, with unchanged application algorithms). All frozen-method
 comparisons use app version **0.7.0.dev4**; rendering revisions are separate.
 No improved biological accuracy has been demonstrated. Final v0.7 publication
@@ -33,23 +33,23 @@ requires the owner's local testing and explicit approval.
 | Owner biological review of small IMG9/n23 locations A/B/C | Done; provisional qualitative review | At raw display 688–1668 without smoothing, none was accepted as convincing PNC; the owner requires substantially brighter enrichment. | This is not an exhaustive negative annotation of the nucleus/image/folder, and supplies no numerical brightness threshold. Preserve historical measurements; do not rescue these locations by threshold changes. |
 | Owner-confirmed clearly positive target | Done; indicated location confirmed | Owner answered "yes P is" for P, positive IMG1/n74, crop X69/Y75. P is the original fixed LPN4/SAG5 positive anchor. | Confirmation covers the indicated location, not an exact boundary, other candidates or the folder. A/B/C remain provisionally nonconvincing. |
 | Step 6: frozen-method comparison of reviewed P/A/B/C | Done; diagnostic only | RPC6-dev4-r1-20261128: P passes every frozen stage; A passes none. Whole-nucleus-width stages reject B/C; existing local-width stages accept B/C despite their nonconvincing review. P/A saved outcomes reused; only four B/C fits and ten evidence calls added. | Statistical detectability alone does not establish PNC identity. Review the separation/tradeoff before broader work; no threshold fitted or product detector adopted. |
-| Interactive development review panel | Ready; bridge build and QA complete | PNC-DEV-REVIEW-01, rendering 3: 12 additional candidates from 12 development fields; interactive raw context/zoom, editable Positive/Negative/Unsure labels and notes, local saving. | Owner reviews the targets and clicks Save review, then tells the bridge done. Panel readiness is not completed biological review. |
+| Interactive development review panel | Owner review complete; UI ready | PNC-DEV-REVIEW-01, rendering 3: 12/12 reviewed, 5 Positive / 7 Negative / 0 Unsure; bridge build/QA and owner review are distinct completed steps. | Preserve the immutable completed snapshot; a stale browser tab may still show zero. |
 | Owner review of the 12 additional targets | Complete; 12/12 | Immutable owner snapshot: 5 Positive (R01/R02/R03/R06/R10), 7 Negative (R04/R05/R07/R08/R09/R11/R12), 0 Unsure/missing, no notes. Labels cover indicated targets only. | Preserve the exact snapshot/hash; do not use a stale browser tab, latest pointer, zero-label smoke snapshot or isolated QA data as evidence. |
-| Descriptive contrast comparison of the additional panel | In progress | DRC7-dev4-r1-20261128: freeze the completed review/manifest hashes and existing raw3x3 / eroded annulus12–20sigma enrichment convention before calculation. | Compare all 12 fixed targets, mapping/scale/reference adequacy and contradictions; keep P/A/B/C separate. No cutoff optimization, detector fit or broader validation. |
-| Biological identification and detector adoption | Pending | One owner-confirmed P location and three provisionally nonconvincing A/B/C locations now provide a bounded qualitative comparison; no product detector adopted. | Structured-reference variation and plane adequacy remain unresolved; four reviewed points do not establish accuracy, a general cutoff or independent validation. |
-| Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review steps 5/6 before expanding candidate generation, adding rejection rules or measuring validation again. |
+| Descriptive contrast comparison of the additional panel | Done; exploratory descriptive result | DRC7-dev4-r1-20261128: median-ratio ranges 1.74094–4.81554x for 5 positives and 1.05186–1.18622x for 7 negatives; no observed range overlap. P/A/B/C kept separate. | R10 has one-sided reference support; all rings intersect permissive stored growth supports. Existing LocalContrast also separates these points; no validated cutoff or demonstrated detector improvement. |
+| Biological identification and detector adoption | Pending | Prior P/A/B/C and the separately analyzed 12 new target reviews provide exploratory evidence; no product detector adopted. | Structured-reference variation and plane adequacy remain unresolved; the selected development panel does not establish accuracy, a general cutoff or independent validation. |
+| Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review steps 5–7 and owner-panel reference limitations before expanding candidate generation, adding rejection rules or measuring validation again. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
-## Interactive owner review: complete; contrast comparison in progress
+## Interactive owner review and descriptive comparison: complete
 
 The bridge built and opened **PNC-DEV-REVIEW-01**, rendering **3**, at the
 [local review page](http://127.0.0.1:8776/review.html). This is a loopback-only
 review tool with self-contained raw 16-bit crops; it does not change the product
 detector. Panel build provenance is app **0.7.0.dev4**, clean source commit
 `693ce1c1a92a1e693f781bcd99e9619fde5a71ef`. The latest measured research HEAD
-above remains the step-6 measurement until the descriptive checkpoint is complete;
-building a review interface added no detector measurement. The owner's subsequent
-completed snapshot supplies the target-level labels below.
+above records the completed descriptive checkpoint; building a review interface
+added no detector measurement. The owner's subsequent completed snapshot supplies
+the target-level labels below.
 
 **Owner review is COMPLETE: 12/12, 5 Positive / 7 Negative / 0 Unsure.** There are
 no missing choices or notes. The owner used another tab/browser, so an original
@@ -78,14 +78,13 @@ This is a selected, exploratory development panel, not prevalence estimation or
 independent accuracy validation. Existing candidate extraction can omit other
 true PNCs; the panel does not exhaustively label whole nuclei, fields or folders.
 It introduces no new detector/PNC fit, raw ND2 reading, validation access,
-training, threshold or model selection. The previously pending descriptive
-comparison is now authorized and **IN PROGRESS** using the completed immutable
-labels. Freeze the plan before measuring: same fixed targets/denominators,
-existing raw3x3 median/peak divided by the eroded in-nucleus annulus12–20 saved
-small-sigma median convention; preserve reference samples and report support,
-contamination and coordinate/scale checks. Keep previous P/A/B/C results separate.
-No optimized cutoff, new threshold/model, broader run or algorithm adoption is
-authorized by this descriptive exploratory-development comparison.
+training, threshold or model selection. The authorized descriptive comparison is
+now **COMPLETE**, using a plan frozen before calculation and the completed
+immutable labels. It retained the same fixed targets/denominators and existing
+raw3x3 median/peak divided by eroded in-nucleus annulus12–20 saved small-sigma
+median convention. Reference samples and support/contamination/mapping checks
+are preserved; previous P/A/B/C results remain separate. No optimized cutoff,
+new threshold/model, broader run or algorithm adoption was performed.
 
 The bridge's [UI verification](../validation/local/pnc-discrimination/interactive-owner-review/ui-verification.json)
 records isolated test storage for buttons/keyboard, notes/navigation, reload,
@@ -177,7 +176,95 @@ assets or files included in the Git repository.
 | Owner confirmation of P | Confirmation revision 2; source dev4 unchanged | [Confirmed review report](../validation/local/pnc-discrimination/positive-reference-owner-review/report-v2.html), [verbatim confirmation and provenance](../validation/local/pnc-discrimination/positive-reference-owner-review/owner-confirmation-v2.json) |
 | Reviewed points step 6 | RPC6-dev4-r1-20261128; app dev4 before/after, render 1; clean measurement HEAD 6adb2e6a14de7b89923345e69bc79f9018fb2af4 | [Frozen P/A/B/C comparison](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/report.html) |
 | Interactive additional development panel | PNC-DEV-REVIEW-01; app dev4, rendering 3; built at clean HEAD 693ce1c1a92a1e693f781bcd99e9619fde5a71ef; owner review complete 5 Positive / 7 Negative | [Immutable owner snapshot](../validation/local/pnc-discrimination/interactive-owner-review/reviews/review-20261128T064807-f9ee3275.json), [completion verification](../validation/local/pnc-discrimination/interactive-owner-review/completed-review-verification.json), [build record](../validation/local/pnc-discrimination/interactive-owner-review/build-verification.json) |
-| Descriptive reviewed-panel contrast | DRC7-dev4-r1-20261128; in progress | Pending |
+| Descriptive reviewed-panel contrast | DRC7-dev4-r1-20261128; app dev4 before/after, rendering 1; clean measurement HEAD 9f565cf57857f146742f2dd3bc7335a1ddff1854 | [Completed 12-target contrast report](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/report.html) |
+
+### Step 7: completed owner-panel contrast checkpoint
+
+**DRC7-dev4-r1-20261128 is complete; product adoption remains pending.** App
+BEFORE **0.7.0.dev4** / AFTER **0.7.0.dev4**; no implementation changed. This
+adds descriptive measurements to the completed owner panel, not a paired rerun
+of a detector or a claim of improvement against an invented prior 12-point
+baseline. The frozen plan identifies the exact immutable review/manifest hashes,
+configuration and source exports. Only saved development data were read; no raw
+ND2, detector/background/noise fit, validation measurement or browser response
+update was needed.
+
+The pre-existing convention uses the unsmoothed raw 3-by-3 median/peak at each
+fixed reviewed seed, divided by the raw median of its one-pixel-eroded SAM
+annulus at 12–20 saved small-sigma units. For all 12, calibration is
+0.107495210727969 micrometres/pixel and sigma is 0.9302740031 pixels; ring radii
+are 1.2–2.0 micrometres. No recentering, smoothing, reference trimming, exposure
+normalization, external controls or new parameter choice was introduced.
+
+| Owner target label | n | Raw3x3 median / ring median: range | Group median | Raw3x3 peak / ring median: range |
+| --- | --- | --- | --- | --- |
+| Positive | 5 | 1.74094–4.81554x | 3.48018x | 1.90036–5.09804x |
+| Negative | 7 | 1.05186–1.18622x | 1.09864x | 1.08259–1.25359x |
+
+Neither predeclared ratio has observed positive/negative range overlap in these
+12 selected targets. The gap between median-ratio extrema 1.18622 and 1.74094 is
+descriptive only; no cutoff inside it was chosen, tested or called validated.
+This makes simple local enrichment useful evidence here, not a classifier,
+independent validation, accuracy estimate or general biological threshold.
+Existing stored footprint LocalContrast also separates these reviewed ranges,
+so superiority over that measure has not been demonstrated. Stored integrated
+SignalScore overlaps (positive R02 2.91682; negative R05 3.01140); those unchanged
+scores and raw-support/noise estimates are separate from the new ratios.
+
+Important limitations and counterexamples remain in the full report:
+
+- **R02 is owner-positive despite the PNC-negative folder**, with median
+  enrichment 1.74094x. Folder labels are not per-target truth. Its ring includes
+  421 pixels of other stored growth support and two other measured seeds.
+- **R10 is owner-positive at 1.93206x**, with 539 ring pixels and angular counts
+  `[89,88,89,88,89,37,2,57]`; it fails the existing diagnostic minimum of 4 per
+  sector. Retain its value with a one-sided-reference warning, not a fallback,
+  exclusion or negative biological call. The other 11 rings have 708 pixels.
+- **All 12 rings intersect stored A-growth supports.** At negative R07, 706/708
+  reference pixels carry a stored growth label. These permissive supports are
+  not owner-annotated PNC masks: overlap flags possible reference contamination,
+  not proven biological objects. No ring is established as clean nucleoplasm.
+- Raw intensities differ across acquisitions, and reference MAD/IQR contains
+  structure/gradients as well as unknown noise. Neither it nor stored Noise is
+  calibrated instrument noise. P/A/B/C values are shown only as a separate prior
+  reference; they were not pooled with the new 5/7 distributions.
+
+Every target's raw and relative-intensity maps, fixed profiles, actual reference
+histograms/pixels, stored support overlays, original candidate measurements and
+acquisition metadata are retained. See the [full private report](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/report.html),
+[all-12 distribution figure](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/plots/all12-distributions.png),
+[R10 boundary/reference example](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/plots/R10-raw-relative-reference.png)
+and [per-target table](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/per-target.csv).
+
+All 12 source export hashes, embedded review-page raw bytes/targets/masks,
+whole-to-crop coordinates, physical scale, seed ownership, stored candidate
+seed/area and eligibility/exclusion checks pass. No raw3x3 window leaves its
+selected SAM mask, no reference pixel is owned by another nucleus, and no
+target/reference sample reaches the recorded ADC ceiling. All **8,327 raw
+reference samples** are preserved with coordinates in
+[the reference CSV](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/reference-samples.csv)
+and per-target arrays. Native uint16 TIFFs are exact; histogram counts and local
+links pass. All **534 protected files** remain hash-unchanged, including the
+immutable owner snapshot, earlier reports/sources/arrays and dev2 installer.
+Runtime was 1.996 seconds for the 12 saved-export loads, mapping, descriptive
+measurements and output writes; imports/hash preflight/rendering and any cold
+app/SAM or warm-slider work are excluded. No product test suite was rerun for
+unchanged implementation.
+
+Measured clean HEAD: `9f565cf57857f146742f2dd3bc7335a1ddff1854`; unchanged
+application source-tree Git hash: `8270e4af81e4955c21838f43c6bcecc451f37ebc`.
+Ignored step-7 script SHA256:
+`2d10300e97bfd8d63475f2412fa9c03eab800fa003bae56f951aa5bc5a340519`.
+The [frozen analysis plan](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/plan.json)
+and [preservation verification](../validation/local/pnc-discrimination/owner-panel-contrast-step7-dev4/verification.json)
+record exact review, manifest, source/input and output hashes. Final tracker-only
+documentation commit/delivery provenance is recorded separately in the handoff.
+
+**Next review recommendation:** retain relative enrichment as auditable
+descriptive evidence; review R02/R10 and reference-quality overlays before any
+next bounded experiment or product change. This contrast-selected development
+panel does not support an optimized cutoff or algorithm promotion. No further
+work, training, broader validation or release is performed at this checkpoint.
 
 ### Owner biological review: small IMG9/n23
 
@@ -398,12 +485,13 @@ suite was rerun because implementation did not change.
 **Current review recommendation:** do not adopt guard growth as a general
 correction or seek to rescue the reviewed A/B/C locations. Step 6 confirms that
 local statistical evidence alone can accept owner-reviewed nonconvincing B/C;
-keep biological enrichment distinct and review the frozen-stage tradeoffs before
-broader work. The whole-width separation observed at these four points does not
-erase prior failures or validate a general cutoff. Plane adequacy and structured
-reference variation remain open issues. Stop at this completed checkpoint;
-broader adoption, threshold fitting, hot-pixel rules and dependency retries remain
-outside its scope.
+step 7 shows useful descriptive enrichment separation in the selected 12-target
+panel, without establishing a cutoff or superiority over existing LocalContrast.
+Review R02/R10 and reference-quality overlays before broader work. The observed
+separations do not erase prior failures or validate a general detector. Plane
+adequacy and structured-reference variation remain open issues. Stop at this
+completed checkpoint; broader adoption, threshold fitting, hot-pixel rules and
+dependency retries remain outside its scope.
 
 Step 5 algorithm provenance: application enrichment SHA256
 `2ff62e9a89f85f01748d8ed87b0f4556f0413624f7bf3138191c253e82af8b90`;
