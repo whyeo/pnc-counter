@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.7.0 installer maintenance preview (0.7.0.dev7, unreleased)
+
+- Detects an existing installation of the same edition and asks to upgrade an
+  older version or repair the same version. Cancel leaves app files unchanged.
+- Reuses the registered folder, preserves settings/models/results, and prevents
+  replacing a newer version with an older installer. Preview and stable remain
+  separate; application-file repair is distinct from SAM-engine repair.
+- Adds isolated, real-installer checks for fresh install, upgrade/repair prompts,
+  cancellation, custom paths, damaged-file recovery and downgrade protection.
+- Retains dev6 analysis, threshold and review UI; final release remains pending.
+
 ## v0.7.0 review interface preview (0.7.0.dev6, unreleased)
 
 - Packages the local preview with current installation/review guides and

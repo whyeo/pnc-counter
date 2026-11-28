@@ -5,7 +5,7 @@ with perinucleolar compartments (PNCs) in Nikon ND2 and multichannel TIFF images
 SAM finds the nucleus boundaries; **local enrichment** measures candidate PNC
 brightness relative to the surrounding nucleoplasm.
 
-**Current revision: 0.7.0.dev6, the v0.7.0 local preview.** The default local enrichment threshold
+**Current revision: 0.7.0.dev7, the v0.7.0 local preview.** The default local enrichment threshold
 is **1.8x**. Automatic calls are a starting point for human review. This preview
 must be tested locally before its release is finalized.
 
@@ -14,7 +14,7 @@ This README describes the current revision. Version history is in the
 
 ## Install the Windows preview
 
-The local test installer is **PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe**.
+The local test installer is **PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe**.
 This preview has not been published as a stable GitHub Release.
 
 1. Double-click the installer and follow the setup pages. It installs **PNC
@@ -30,6 +30,14 @@ This preview has not been published as a stable GitHub Release.
 You can skip engine setup initially to review a saved analysis. Return through
 **Advanced settings → Set up / repair SAM** when ready to analyze new images.
 See the [Windows installation guide](docs/windows-installer.md) for setup details.
+
+The default preview folder is `%LOCALAPPDATA%\Programs\PNC Counter Preview`.
+Run the installer again to maintain an existing installation: an older preview
+gets an **Upgrade** confirmation; the same version gets a **Repair** confirmation.
+Both reuse its existing folder and preserve preferences, models and results.
+Choose **No** to cancel. Repair refreshes application files; use **Set up / repair
+SAM** inside the app to repair its analysis engine. A newer installed version is
+not replaced by an older installer. Stable and preview installations stay separate.
 
 ## Analyze and review images
 

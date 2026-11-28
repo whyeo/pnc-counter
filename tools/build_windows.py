@@ -156,7 +156,7 @@ def main():
     installer = output_dir / f"{filename}.exe"
     notes = ("- Count PNC-positive cells using adjustable local enrichment, starting at 1.8x background.\n"
              "- Review nuclei in a fixed side panel with automatic image fit, manual PNC calls and spatial numbering.\n"
-             "- Save reviewed counts, overlays and number mappings; this preview awaits owner acceptance.\n") if args.preview else None
+             "- Upgrade or repair an existing preview while keeping preferences, models and results.\n") if args.preview else None
     write_release_assets(installer, manifest, notes)
     print(f"Installer: {installer}", flush=True)
 

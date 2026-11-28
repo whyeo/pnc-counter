@@ -1,7 +1,7 @@
 # Windows installer and analysis setup
 
 For the current local preview, double-click
-`PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe`, follow the installation pages,
+`PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe`, follow the installation pages,
 then leave **Open PNC Counter and complete first-time analysis setup** selected.
 The installer includes a private Python 3.12 runtime, Tk, and the base image tools.
 It supports 64-bit Windows 10/11 without a system Python, Git, compiler, or
@@ -11,6 +11,28 @@ Preview builds install as **PNC Counter Preview**, with a separate Start-menu
 entry, application identity and preferences. The stable release remains v0.6.0.
 The preview uses the 1.8x local enrichment default and the native side-panel
 review interface; testing the packaged preview does not publish a release.
+
+## Upgrade or repair an existing installation
+
+Run the downloaded installer. It detects the registered installation of the
+same edition and displays its version and folder:
+
+- **Older installed version:** asks to upgrade to the downloaded version.
+- **Same installed version:** asks to repair/reinstall the application files.
+- **Newer installed version:** stops; use the matching/newer installer to repair.
+- **No existing installation:** performs the normal first-time installation.
+
+Choose **Yes** to continue or **No** to leave the existing installation unchanged.
+Upgrades and repairs reuse the existing folder, including a custom location.
+Preferences, downloaded models and analysis results are preserved. Repair
+refreshes application files; **Set up / repair SAM** in the app separately repairs
+the PyTorch/SAM engine. Preview installers maintain previews; stable installers
+maintain stable installations. If the other edition is present, setup explains
+that it will remain separate. Machine-wide installs require their matching
+installer/administrator rather than being replaced by a per-user installer.
+
+Silent deployment selects upgrade/repair automatically and still blocks a
+downgrade or an unidentified installed version.
 
 The first-run wizard recommends CPU or a compatible NVIDIA GPU, explains the
 downloads, installs PyTorch and the pinned official Meta SAM 2.1 package, downloads
@@ -65,8 +87,8 @@ For a local development preview, commit the source first and use:
 python tools/build_windows.py --preview --require-clean --bootstrap-compiler
 ```
 
-For version 0.7.0.dev6 this produces
-`dist/preview/0.7.0.dev6/PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe`, with
+For version 0.7.0.dev7 this produces
+`dist/preview/0.7.0.dev7/PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe`, with
 `SHA256SUMS.txt`, `build-info.json` and `release-notes.md` beside it. Older
 preview files are preserved. A `.dev` preview cannot create a stable version tag.
 

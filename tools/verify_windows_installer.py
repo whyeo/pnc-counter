@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import urllib.request
+import uuid
 from pathlib import Path
 
 from release_metadata import digest
@@ -126,6 +127,8 @@ def main():
     parser.add_argument("--preview", action="store_true", help="Verify the isolated preview installer")
     parser.add_argument("--review-analysis", type=Path,
                         help="Also test installed enrichment slider/save/reopen on an existing local analysis")
+    parser.add_argument("--test-identity", type=uuid.UUID,
+                        help="Registry identity of a separately compiled test installer; never an owner's app")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Installer verification requires Windows")
@@ -142,6 +145,10 @@ def main():
     import winreg
 
     identity = "D397F5FC-A509-4C44-8959-18247B83FDF1" if args.preview else "B9C4DC6E-A44E-4862-8DA6-14983A6C7773"
+    if args.test_identity:
+        identity = str(args.test_identity).upper()
+    record["installation_identity"] = identity
+    record["isolated_identity_variant"] = args.test_identity is not None
     key = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{" + identity + "}_is1"
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
