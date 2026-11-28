@@ -31,8 +31,9 @@ requires the owner's local testing and explicit approval.
 | Step 5A: inspect the real small example | Done; inspection only | SAG5A-dev4-r1-20261128: filtered excess 37.05/40.02 is below the unchanged seed cutoff 80.68; no size/hot-pixel veto caused the probe's failure to pass. | The target was unconfirmed; the owner subsequently did not accept this location (A) as convincing PNC at displayed brightness. This is not a known-positive miss. Raw reference MAD 45.68 is not verified instrument noise. |
 | Step 5B: one expanded-guard comparison | Done; useful mixed result | SAG5B-dev4-r1-20261128: reference guard 8 to 12 sigma only; positive anchor prior-footprint fit weight 15.70% to 2.63%. All 29 probe component outcomes unchanged; five original supported no-spot probes remain empty. | Nearby-focus contamination persists; curved central-background RMSE worsens 6.453 to 7.772; unconfirmed small anchor stays below cutoff, hot pixel still passes. Three boundary probes remain indeterminate. No second guard tried. |
 | Owner biological review of small IMG9/n23 locations A/B/C | Done; provisional qualitative review | At raw display 688–1668 without smoothing, none was accepted as convincing PNC; the owner requires substantially brighter enrichment. | This is not an exhaustive negative annotation of the nucleus/image/folder, and supplies no numerical brightness threshold. Preserve historical measurements; do not rescue these locations by threshold changes. |
-| Owner-confirmed clearly positive target | Pending bridge clarification | No A/B/C location is established as a known-positive preservation target. | Obtain a clearly positive example and intended location through the bridge, then quantify contextual enrichment/background and evaluate frozen methods there. No new experiment launched. |
-| Biological identification and detector adoption | Pending | Steps 4 and 5 provide controlled diagnostic progress; no product detector adopted. | A clearly positive target is needed; structured-reference variation and plane adequacy remain unresolved. No biological improvement claim. |
+| Owner-confirmed clearly positive target | Done; indicated location confirmed | Owner answered "yes P is" for P, positive IMG1/n74, crop X69/Y75. P is the original fixed LPN4/SAG5 positive anchor. | Confirmation covers the indicated location, not an exact boundary, other candidates or the folder. A/B/C remain provisionally nonconvincing. |
+| Step 6: frozen-method comparison of reviewed P/A/B/C | In progress | RPC6-dev4-r1-20261128: reuse saved P/A outcomes; measure only B/C with the already frozen LPN4/SAG5 configurations. | Report per-stage candidates, reference/background/enrichment, variation-width scores, raw support, fixed decisions and adequacy flags. No fitting a brightness threshold or parameter search. |
+| Biological identification and detector adoption | Pending | One owner-confirmed P location and three provisionally nonconvincing A/B/C locations now provide a bounded qualitative comparison; no product detector adopted. | Structured-reference variation and plane adequacy remain unresolved; four reviewed points do not establish accuracy, a general cutoff or independent validation. |
 | Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review step 5 before expanding candidate generation, adding rejection rules or measuring validation again. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
@@ -102,6 +103,8 @@ assets or files included in the Git repository.
 | Small example step 5A | SAG5A-dev4-r1-20261128; app dev4, render 1; clean measurement HEAD c9e57c9243b82e5922427deae3b5663f0121f18e | [Native small-anchor inspection](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-a.html) |
 | Guard comparison step 5B | SAG5B-dev4-r1-20261128; app dev4 before/after, render 2; clean measurement HEAD 009f985be87061b7ce045f92adc438e0bde3744b | [One-guard comparison](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-b-v2.html) |
 | Owner biological review of A/B/C | Qualitative review revision 2; source dev4 unchanged; informational steering after step 5 | [Reviewed raw image](../validation/local/pnc-discrimination/small-anchor-owner-review/small-example-ABC.png), [verbatim feedback and provenance](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review-v2.json) |
+| Owner confirmation of P | Confirmation revision 2; source dev4 unchanged | [Confirmed review report](../validation/local/pnc-discrimination/positive-reference-owner-review/report-v2.html), [verbatim confirmation and provenance](../validation/local/pnc-discrimination/positive-reference-owner-review/owner-confirmation-v2.json) |
+| Reviewed points step 6 | RPC6-dev4-r1-20261128; in progress | Pending |
 
 ### Owner biological review: small IMG9/n23
 
@@ -129,12 +132,10 @@ All historical counts, arrays and reports remain unchanged. The review changes
 their biological interpretation, not the measured outputs. No product/manual
 calls, labels used for validation, thresholds or fitting rules were changed.
 
-The next scientific need is an **owner-confirmed clearly positive example and
-intended target**, to be clarified through the bridge. Then relative enrichment
-and background can be quantified in per-image/per-nucleus context and frozen
-methods assessed at that intended positive target. This update authorizes no
-additional guard/threshold fitting, parameter sweep or biological accuracy claim;
-no new experiment was run.
+This review initially left a clearly positive example unresolved. The subsequent
+confirmation of P below fulfills that clarification; it does not reverse the
+A/B/C review or justify a threshold rescue. No guard/threshold fitting, parameter
+sweep or biological accuracy claim follows from either qualitative review.
 
 Private evidence: [review revision 2](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review-v2.json)
 retains the verbatim history, coordinates and source hashes;
@@ -148,6 +149,43 @@ reviewed figure
 preserved original review
 `2c06e6aa30034282938be0c418bd17dc907ea544b47cfee9b8749536e11b93f0`.
 Figure, parent-review and saved-input hashes match the revision-2 provenance.
+
+### Owner-confirmed positive location P
+
+The bridge displayed P in PNC positive/IMG1, nucleus 74, at zero-based crop
+**X69/Y75**, using the saved whole raw maximum projection and a 31-pixel zoom.
+Asked "Would you consider P a clear PNC-positive example?", the owner answered
+**"yes P is"**. Record this indicated location as **OWNER-CONFIRMED PNC POSITIVE**.
+There is no exact object-boundary annotation. P is the original positive anchor
+already measured in LPN4/SAG5, not a new field selected for the desired outcome.
+Neither this confirmation nor the A/B/C review extends to whole nuclei, images
+or folders; the locations remain exploratory, not independent validation.
+
+The bridge's existing descriptive comparison divides the raw 3-by-3 median by
+the raw median of the eroded in-nucleus annulus at 12–20 saved small-sigma units,
+with 708 reference pixels per location: **P 15159 / 3511.5 = 4.31696x**;
+**A 1.01112x, B 1.15344x, C 1.12949x**. P's 3-by-3 peak ratio is **4.48298x**.
+The ring can contain other structures; these are descriptive enrichment ratios,
+not a calibrated SNR or proof of true background. They do not define a 4x rule,
+general brightness cutoff or classifier. No external control/exposure adjustment
+is used.
+
+Current confirmation is in the [revision-2 record](../validation/local/pnc-discrimination/positive-reference-owner-review/owner-confirmation-v2.json)
+and [confirmed report](../validation/local/pnc-discrimination/positive-reference-owner-review/report-v2.html).
+The [P figure](../validation/local/pnc-discrimination/positive-reference-owner-review/positive-example-P.png)
+and [P/A/B/C brightness figure](../validation/local/pnc-discrimination/positive-reference-owner-review/relative-brightness-PABC.png)
+remain preserved. The older [descriptive review](../validation/local/pnc-discrimination/positive-reference-owner-review/review.json)
+and original pending-review rendering retain their historical wording; the
+revision-2 confirmation supplies the current biological status.
+
+The authorized bounded next checkpoint compares only these four fixed locations
+using existing frozen configurations: original LPN4 guard 8–20 sigma and the
+already recorded SAG5 guard 12–20 comparator; the evaluation core remains
+8 sigma. P/A fits and decisions are reused from saved results. Only B/C require
+new fits and probe decisions with the identical existing functions/constants.
+Candidate coordinates, indication-point overlap and raw support remain distinct
+from a biological object mask. No new guard, model, threshold, training, broader
+field run or validation measurement is authorized by this checkpoint.
 
 ### Checkpoint 5 before/after findings
 
@@ -199,12 +237,11 @@ evidence, rendering, cold app/SAM preparation and warm-slider latency. No produc
 suite was rerun because implementation did not change.
 
 **Current review recommendation:** do not adopt guard growth as a general
-correction or seek to rescue the reviewed A/B/C locations. Following the owner's
-qualitative review, first obtain a clearly positive example and intended location
-through the bridge, then quantify relative enrichment/background and assess
-frozen methods at that target. Plane adequacy and structured-reference variation
-remain open issues. Stop here pending positive-example clarification; no further
-experiment, threshold rescue, hot-pixel rule or dependency retry was performed.
+correction or seek to rescue the reviewed A/B/C locations. P is now confirmed;
+step 6 will quantify contextual enrichment/background and assess the existing
+frozen methods at P/A/B/C only. Plane adequacy and structured-reference variation
+remain open issues. Broader adoption, threshold fitting, hot-pixel rules and
+dependency retries remain outside this bounded checkpoint.
 
 Step 5 algorithm provenance: application enrichment SHA256
 `2ff62e9a89f85f01748d8ed87b0f4556f0413624f7bf3138191c253e82af8b90`;
