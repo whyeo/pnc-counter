@@ -1,5 +1,8 @@
 # Implemented workflows and next improvements
 
+For current PNC detection research, completed diagnostics and pending work, see
+the [v0.7 progress tracker](v070-progress.md).
+
 The four requested priorities have implementations in v0.4. See the
 [accuracy workflow guide](accuracy-workflow.md) for definitions and limits.
 
