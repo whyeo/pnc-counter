@@ -28,9 +28,11 @@ requires the owner's local testing and explicit approval.
 | Step 4: local plane background and local noise | Done; useful controlled result | Local background recovered the strong gradient spot; local noise additionally recovered the faint spot. All five supported original no-spot probes stayed negative. | Real-reference contamination, curved-background adequacy and the small real example remain unresolved. This was probe evidence, not a full-field detector. |
 | Step 4: raw spatial support | Done as diagnostic | The hot pixel had one raw support pixel despite 17 filtered support pixels. | No rejection rule adopted; a rule could also reject small signals. |
 | Independent Big-FISH baseline | Blocked; not run | Separate research installation could not obtain the pinned NumPy distribution. Product dependencies unchanged. | Optional baseline when a compatible research environment is available; do not block the next diagnostic on it. |
-| Step 5A: inspect the real small example | Done; inspection only | SAG5A-dev4-r1-20261128: native pixel/context views locate the unreviewed two-pixel footprint. Filtered excess 37.05/40.02 is below the unchanged seed cutoff 80.68; no size/hot-pixel veto caused this miss. | Identity and the owner's intended small PNC remain unreviewed. Raw reference MAD 45.68 is not verified instrument noise. |
-| Step 5B: one expanded-guard comparison | Done; useful mixed result | SAG5B-dev4-r1-20261128: reference guard 8 to 12 sigma only; positive anchor prior-footprint fit weight 15.70% to 2.63%. All 29 probe component outcomes unchanged; five original supported no-spot probes remain empty. | Nearby-focus contamination persists; curved central-background RMSE worsens 6.453 to 7.772; small anchor still misses, hot pixel still passes. Three boundary probes remain indeterminate. No second guard tried. |
-| Biological identification and detector adoption | Pending | Steps 4 and 5 provide controlled diagnostic progress; no product detector adopted. | Owner identification of the intended small structure; structured-reference variation and plane adequacy remain unresolved. No biological improvement claim. |
+| Step 5A: inspect the real small example | Done; inspection only | SAG5A-dev4-r1-20261128: filtered excess 37.05/40.02 is below the unchanged seed cutoff 80.68; no size/hot-pixel veto caused the probe's failure to pass. | The target was unconfirmed; the owner subsequently did not accept this location (A) as convincing PNC at displayed brightness. This is not a known-positive miss. Raw reference MAD 45.68 is not verified instrument noise. |
+| Step 5B: one expanded-guard comparison | Done; useful mixed result | SAG5B-dev4-r1-20261128: reference guard 8 to 12 sigma only; positive anchor prior-footprint fit weight 15.70% to 2.63%. All 29 probe component outcomes unchanged; five original supported no-spot probes remain empty. | Nearby-focus contamination persists; curved central-background RMSE worsens 6.453 to 7.772; unconfirmed small anchor stays below cutoff, hot pixel still passes. Three boundary probes remain indeterminate. No second guard tried. |
+| Owner biological review of small IMG9/n23 locations A/B/C | Done; provisional qualitative review | At raw display 688–1668 without smoothing, none was accepted as convincing PNC; the owner requires substantially brighter enrichment. | This is not an exhaustive negative annotation of the nucleus/image/folder, and supplies no numerical brightness threshold. Preserve historical measurements; do not rescue these locations by threshold changes. |
+| Owner-confirmed clearly positive target | Pending bridge clarification | No A/B/C location is established as a known-positive preservation target. | Obtain a clearly positive example and intended location through the bridge, then quantify contextual enrichment/background and evaluate frozen methods there. No new experiment launched. |
+| Biological identification and detector adoption | Pending | Steps 4 and 5 provide controlled diagnostic progress; no product detector adopted. | A clearly positive target is needed; structured-reference variation and plane adequacy remain unresolved. No biological improvement claim. |
 | Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review step 5 before expanding candidate generation, adding rejection rules or measuring validation again. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
@@ -99,6 +101,53 @@ assets or files included in the Git repository.
 | Local background and noise step 4 | LPN4-dev4-r1-20261128 | [Step 4](../validation/local/pnc-discrimination/local-plane-noise-step4-dev4/report.html) |
 | Small example step 5A | SAG5A-dev4-r1-20261128; app dev4, render 1; clean measurement HEAD c9e57c9243b82e5922427deae3b5663f0121f18e | [Native small-anchor inspection](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-a.html) |
 | Guard comparison step 5B | SAG5B-dev4-r1-20261128; app dev4 before/after, render 2; clean measurement HEAD 009f985be87061b7ce045f92adc438e0bde3744b | [One-guard comparison](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-b-v2.html) |
+| Owner biological review of A/B/C | Qualitative review revision 2; source dev4 unchanged; informational steering after step 5 | [Reviewed raw image](../validation/local/pnc-discrimination/small-anchor-owner-review/small-example-ABC.png), [verbatim feedback and provenance](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review-v2.json) |
+
+### Owner biological review: small IMG9/n23
+
+The owner reviewed the saved whole nucleus and nearest-pixel raw zooms of three
+locations: **A central (74,76), B upper-left (50,59), C lower-left (51,78)**,
+in zero-based crop **X/Y** coordinates. The display used linear raw limits
+**688–1668**, the saved maximum-Z projection and no smoothing. A is the previously
+selected central two-pixel probe. The owner first said, "i dont think that is the
+true PNC." After reviewing A/B/C, the owner said, "i wouldnt consider those PNCs
+unless they are significantly brighter".
+
+Record **all three as not accepted as convincing PNC at the displayed
+brightness**, a provisional qualitative review. This does not establish an
+exhaustive negative label for the nucleus, image or PNC-small folder. A/B/C must
+not be treated as known-positive misses or targets for threshold rescue.
+Small-folder membership and preserved legacy calls cannot establish true-positive
+preservation. Substantial brightness enrichment within the image/nucleus context
+is part of the owner's biological appearance requirement; a statistically
+detectable local peak alone is insufficient. No absolute or fold-change threshold
+can be inferred from this comment.
+
+Earlier "small miss" wording refers to a selected, **unconfirmed probe failing
+the frozen numerical rule**, not a demonstrated failure to detect a true PNC.
+All historical counts, arrays and reports remain unchanged. The review changes
+their biological interpretation, not the measured outputs. No product/manual
+calls, labels used for validation, thresholds or fitting rules were changed.
+
+The next scientific need is an **owner-confirmed clearly positive example and
+intended target**, to be clarified through the bridge. Then relative enrichment
+and background can be quantified in per-image/per-nucleus context and frozen
+methods assessed at that intended positive target. This update authorizes no
+additional guard/threshold fitting, parameter sweep or biological accuracy claim;
+no new experiment was run.
+
+Private evidence: [review revision 2](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review-v2.json)
+retains the verbatim history, coordinates and source hashes;
+[the original review](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review.json)
+is unchanged and [the rendering script](../validation/local/pnc-discrimination/small-anchor-owner-review/plot_review.py)
+reproduces [the reviewed image](../validation/local/pnc-discrimination/small-anchor-owner-review/small-example-ABC.png).
+Verified SHA256 values: review revision 2
+`9eae47d8506d7ca9b91e73a7c1e380e115d739738c25c4cf708b37c437e4b098`;
+reviewed figure
+`66c5bf093d6dbd68981bc63eb78a02e6382a6e1581965386e3ff041c32b5fda4`;
+preserved original review
+`2c06e6aa30034282938be0c418bd17dc907ea544b47cfee9b8749536e11b93f0`.
+Figure, parent-review and saved-input hashes match the revision-2 provenance.
 
 ### Checkpoint 5 before/after findings
 
@@ -115,7 +164,7 @@ detector or a biological call. No validation data were remeasured.
 | --- | --- | --- |
 | Positive real anchor prior-footprint reference overlap / fit weight | 203 pixels / 15.70% | 35 pixels / 2.63%; contamination not eliminated |
 | Positive real nearby probe footprint overlap / fit weight | 197 / 12.58% | 150 / 12.02%; off-center contamination remains |
-| Small real anchor filtered excess / seed cutoff | 40.02 / 80.68 | 33.73 / 77.16; still misses (80.68 with old width frozen) |
+| Unconfirmed small-folder anchor filtered excess / seed cutoff | 40.02 / 80.68 | 33.73 / 77.16; below cutoff (80.68 with old width frozen); not a known-positive miss |
 | Strong gradient injected signal retained in identical core | 99.97346% | 99.99999%; original region remains |
 | Irregular injected signal retained in identical core | 99.64641% | 99.99952%; original region remains |
 | Curved no-spot central core background RMSE | 6.45288 | 7.77172; worsens despite lower reference MAD and better conditioning |
@@ -149,11 +198,13 @@ on 29 probes in an existing CPU Python process; these exclude imports/loading,
 evidence, rendering, cold app/SAM preparation and warm-slider latency. No product
 suite was rerun because implementation did not change.
 
-**Review recommendation:** do not adopt guard growth as a general correction.
-Review the intended small structure and prioritize a bounded diagnostic of plane
-adequacy and structured-reference variation on the preserved probes before any
-broader implementation. Stop here for review; no further experiment, threshold
-rescue, hot-pixel rule or dependency retry belongs to this completed checkpoint.
+**Current review recommendation:** do not adopt guard growth as a general
+correction or seek to rescue the reviewed A/B/C locations. Following the owner's
+qualitative review, first obtain a clearly positive example and intended location
+through the bridge, then quantify relative enrichment/background and assess
+frozen methods at that target. Plane adequacy and structured-reference variation
+remain open issues. Stop here pending positive-example clarification; no further
+experiment, threshold rescue, hot-pixel rule or dependency retry was performed.
 
 Step 5 algorithm provenance: application enrichment SHA256
 `2ff62e9a89f85f01748d8ed87b0f4556f0413624f7bf3138191c253e82af8b90`;
