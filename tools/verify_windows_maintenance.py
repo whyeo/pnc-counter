@@ -153,6 +153,11 @@ def main():
         assert hashes(install) == before
         assert "PNC maintenance action: repair" in silent(updated, "repair")
         assert target.read_text() == current
+        if ".dev" not in current:
+            set_version(current + ".dev10")
+            assert "PNC maintenance action: upgrade" in silent(updated, "preview-to-stable")
+            assert installed_version() == current
+            record["preview_to_stable_version_order"] = True
         newer = (current.split(".dev")[0] + ".dev" + str(int(current.split(".dev")[1]) + 3)
                  if ".dev" in current else "99.0.0")
         for label, version in (("newer-dev", newer), ("stable", current.split(".dev")[0]),
@@ -167,7 +172,8 @@ def main():
         assert hashes(userdata) == protected and (install / "owner-keep.txt").is_file()
         record.update(passed=True, fresh=True, upgrade=True, repair=True,
                       cancelled_prompts_preserve_files=True, custom_directory_reused=True,
-                      numeric_development_and_stable_downgrades_blocked=True,
+                      newer_versions_blocked=True,
+                      numeric_development_order_checked=".dev" in current,
                       unknown_version_blocked=True, user_files_preserved=True)
     finally:
         if (install / "unins000.exe").is_file():

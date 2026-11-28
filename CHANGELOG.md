@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.7.0 — 28 November 2026
+
+- Counts PNC-positive cells using adjustable local enrichment, starting at 1.8x
+  surrounding nuclear background. A live threshold slider reuses saved nuclei.
+- Simplifies review with a fixed side panel, automatic image fit, spatially
+  ordered nucleus numbers, manual PNC calls and immutable saved revisions.
+- Adds installer upgrade/repair detection while preserving settings, models and
+  results. Exports include number-to-mask-ID mappings and recorded thresholds.
+
+Existing analysis protocols remain readable and retain their selected method.
+Automatic calls require human review; no measured 95% accuracy claim is made.
+
 ## v0.7.0 installer maintenance preview (0.7.0.dev7, unreleased)
 
 - Detects an existing installation of the same edition and asks to upgrade an

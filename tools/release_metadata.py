@@ -52,9 +52,9 @@ def source_identity(root, require_clean=False):
 
 
 def release_notes():
-    return ("- Analyze Nikon ND2 and multichannel TIFF images with a Python-only Windows app.\n"
-            "- Review and correct nuclei, then export counts, measurements and annotated images.\n"
-            "- Guided setup installs CPU/NVIDIA SAM support; no MATLAB installation is needed.\n")
+    return ("- Adjust PNC detection with a local-enrichment slider, starting at 1.8x surrounding background.\n"
+            "- Review cells in a fixed side panel with automatic image fit, spatial numbering and manual corrections.\n"
+            "- Upgrade or repair the Windows app while keeping settings, models and results; export reviewed counts and overlays.\n")
 
 
 def write_release_assets(installer, manifest, notes=None):

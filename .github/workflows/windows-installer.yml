@@ -42,6 +42,11 @@ jobs:
         run: |
           python tools/verify_windows_installer.py "dist/PNC-Counter-${{ steps.version.outputs.version }}-Setup-x64.exe" --require-no-matlab --setup-sam --expected-commit $env:GITHUB_SHA
           Copy-Item -LiteralPath validation/local/release-smoke/verification.json -Destination dist/verification.json
+      - name: Verify upgrade and repair without touching other installations
+        shell: pwsh
+        run: |
+          python tools/verify_windows_maintenance.py --inno build/windows/tools/inno/ISCC.exe --workdir validation/local/release-maintenance --previous-version 0.6.0
+          Copy-Item -LiteralPath validation/local/release-maintenance/verification.json -Destination dist/maintenance-verification.json
       - uses: actions/upload-artifact@v4
         with:
           name: PNC-Counter-v${{ steps.version.outputs.version }}
@@ -50,6 +55,7 @@ jobs:
             dist/SHA256SUMS.txt
             dist/build-info.json
             dist/verification.json
+            dist/maintenance-verification.json
             dist/release-notes.md
       - name: Prepare or publish the GitHub Release
         shell: pwsh
@@ -59,7 +65,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           $tag = "v$env:VERSION"
-          $assets = @("dist/PNC-Counter-$env:VERSION-Setup-x64.exe", "dist/SHA256SUMS.txt", "dist/build-info.json", "dist/verification.json")
+          $assets = @("dist/PNC-Counter-$env:VERSION-Setup-x64.exe", "dist/SHA256SUMS.txt", "dist/build-info.json", "dist/verification.json", "dist/maintenance-verification.json")
           $existing = gh release view $tag --json isDraft,targetCommitish 2>$null
           if ($LASTEXITCODE -eq 0) {
             $release = $existing | ConvertFrom-Json

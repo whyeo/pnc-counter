@@ -4,16 +4,28 @@ Updated 28 November 2026. This tracker records completed research, unresolved
 findings and the next approved work. **A completed experiment does not mean that
 its detector is ready for adoption.**
 
-Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev7**;
+Published stable download: **v0.6.0**. **Owner approved publishing v0.7.0** on
+28 November 2026 and requested local commit/push preparation. Stable 0.7.0 source,
+release notes, documentation and tag workflow are prepared locally. Publication
+remains pending source/tag push and successful hosted installer verification.
+Latest local installer: **0.7.0.dev7**;
 the earlier dev2/dev6 installers and their original metadata are preserved.
 Previous measured research source: **0.7.0.dev4**, commit
 `9f565cf57857f146742f2dd3bc7335a1ddff1854` (step 7; documentation-only
 changes since step 4, with unchanged application algorithms). All frozen-method
 comparisons use app version **0.7.0.dev4**; rendering revisions are separate.
-No improved biological accuracy has been demonstrated. Final v0.7 publication
-requires the owner's local testing and explicit approval.
+No measured biological accuracy claim is made. The owner accepted human-vetted
+counts and approved finalization; hosted build/test success remains required
+before GitHub publishes the stable release.
 
 ## Current local implementation
+
+**Stable source version is now 0.7.0**, carrying the reviewed dev7 behavior.
+README and Windows instructions describe the stable application identity and
+installation path. The matching version tag will trigger a fresh stable build;
+the older preview executable is not being relabeled. The GitHub workflow now
+includes upgrade/repair checks as well as fresh SAM/ND2 installation checks.
+See [release preparation](releases.md) for the push command and asset contract.
 
 **0.7.0.dev7 adds installer maintenance to the dev6 app.** The installer detects
 the same edition, asks to upgrade an older version or repair the same version,
@@ -128,7 +140,7 @@ has been pushed, tagged or published.
 | Full-field app integration | Done locally | 1,391 nucleus maxima and automatic calls reproduce NE8 at 1.8x; CLI, review revisions and exports include the new protocol. | Human review and local acceptance; all previously examined fields remain exploratory. |
 | Native threshold interface | Ready for owner testing | Direct fold slider, numeric entry, reset1.8x, live counts/overlays and Use for next analysis. Source UI open locally. | Owner feedback before packaging/finalization. |
 | Latest-revision README and changelog | Done | README describes dev6 usage only; history remains in separate CHANGELOG.md. | Keep documentation aligned with later changes. |
-| Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
+| Final v0.7 release | Owner approved; files prepared locally | Stable version/docs/release notes and tag workflow ready; prior app/installer tests pass. | Push source and tag; hosted verification must pass before publication. |
 
 ## Interactive owner review and descriptive comparison: complete
 

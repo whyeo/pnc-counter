@@ -5,21 +5,19 @@ with perinucleolar compartments (PNCs) in Nikon ND2 and multichannel TIFF images
 SAM finds the nucleus boundaries; **local enrichment** measures candidate PNC
 brightness relative to the surrounding nucleoplasm.
 
-**Current revision: 0.7.0.dev7, the v0.7.0 local preview.** The default local enrichment threshold
-is **1.8x**. Automatic calls are a starting point for human review. This preview
-must be tested locally before its release is finalized.
+**Version 0.7.0.** The default local enrichment threshold is **1.8x**.
+Automatic calls are a starting point for human review.
 
 This README describes the current revision. Version history is in the
 [changelog](CHANGELOG.md).
 
-## Install the Windows preview
+## Install on Windows
 
-The local test installer is **PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe**.
-This preview has not been published as a stable GitHub Release.
+Download **PNC-Counter-0.7.0-Setup-x64.exe** from
+[GitHub Releases](https://github.com/whyeo/pnc-counter/releases).
 
-1. Double-click the installer and follow the setup pages. It installs **PNC
-   Counter Preview**, separately from the stable application.
-2. Open **PNC Counter Preview** from the Start menu. Python is included; you do
+1. Double-click the installer and follow the setup pages.
+2. Open **PNC Counter** from the Start menu. Python is included; you do
    not need to install Python or run terminal commands.
 3. Follow the first-run analysis setup to install PyTorch/SAM and download the
    selected nucleus model. Choose CPU or the recommended compatible NVIDIA GPU.
@@ -31,13 +29,14 @@ You can skip engine setup initially to review a saved analysis. Return through
 **Advanced settings → Set up / repair SAM** when ready to analyze new images.
 See the [Windows installation guide](docs/windows-installer.md) for setup details.
 
-The default preview folder is `%LOCALAPPDATA%\Programs\PNC Counter Preview`.
-Run the installer again to maintain an existing installation: an older preview
+The default folder is `%LOCALAPPDATA%\Programs\PNC Counter`.
+Run the installer again to maintain an existing stable installation: an older version
 gets an **Upgrade** confirmation; the same version gets a **Repair** confirmation.
 Both reuse its existing folder and preserve preferences, models and results.
 Choose **No** to cancel. Repair refreshes application files; use **Set up / repair
-SAM** inside the app to repair its analysis engine. A newer installed version is
-not replaced by an older installer. Stable and preview installations stay separate.
+SAM** inside the app to repair its analysis engine. This installer will not
+replace a newer installed version. Stable and preview installations stay separate;
+preview preferences are not automatically copied into the stable app.
 
 ## Analyze and review images
 
@@ -164,9 +163,9 @@ A setup executable includes the base Python application. Its first-run wizard
 installs the analysis engine and verifies the selected model. Users of such a
 build can follow its guided setup instead of the source commands above.
 
-The current v0.7 preview is awaiting packaged-build acceptance. The local builder
-places each preview and its checksums/provenance in its own versioned folder;
-see the [Windows build guide](docs/windows-installer.md).
+Version-tag builds produce the installer, SHA-256 checksum, source provenance
+and installation-verification results. See the
+[Windows build guide](docs/windows-installer.md).
 
 ## Batch command line
 

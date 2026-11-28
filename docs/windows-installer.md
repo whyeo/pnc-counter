@@ -1,16 +1,14 @@
 # Windows installer and analysis setup
 
-For the current local preview, double-click
-`PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe`, follow the installation pages,
+Double-click `PNC-Counter-0.7.0-Setup-x64.exe`, follow the installation pages,
 then leave **Open PNC Counter and complete first-time analysis setup** selected.
 The installer includes a private Python 3.12 runtime, Tk, and the base image tools.
 It supports 64-bit Windows 10/11 without a system Python, Git, compiler, or
 administrator account. It does not change PATH or other Python installations.
 
-Preview builds install as **PNC Counter Preview**, with a separate Start-menu
-entry, application identity and preferences. The stable release remains v0.6.0.
-The preview uses the 1.8x local enrichment default and the native side-panel
-review interface; testing the packaged preview does not publish a release.
+The stable app installs as **PNC Counter**. Version 0.7.0 uses the 1.8x local
+enrichment default and native side-panel review. Preview builds retain their
+separate **PNC Counter Preview** identity, shortcuts and preferences.
 
 ## Upgrade or repair an existing installation
 
@@ -59,9 +57,10 @@ Saved setup is reused on later launches. **Redetect hardware** refreshes usable
 hardware after a driver change; setup and repair can install a different processing
 engine if needed. SAM 3 remains experimental and is not installed by this wizard.
 
-Preview application files are installed under `%LOCALAPPDATA%/Programs/PNC Counter Preview` by
+Stable application files are installed under `%LOCALAPPDATA%/Programs/PNC Counter` by
 default. Preferences, models, setup logs and separate analysis environments are
-under `%LOCALAPPDATA%/PNC Counter Preview`. Images/results stay at the paths you choose.
+under `%LOCALAPPDATA%/PNC Counter`. Images/results stay at the paths you choose.
+Preview builds use the corresponding `PNC Counter Preview` directories.
 Uninstall removes application files and shortcuts, preserving these user files.
 Old analysis environments are retained to avoid deleting an environment still in
 use by another window. They may be removed manually after closing the application.
@@ -81,7 +80,8 @@ From a Windows checkout with the development dependencies installed:
 python tools/build_windows.py --bootstrap-compiler
 ```
 
-For a local development preview, commit the source first and use:
+For a local development preview, use a checkout with a `.dev` version, commit
+the source first and use:
 
 ```powershell
 python tools/build_windows.py --preview --require-clean --bootstrap-compiler
@@ -97,7 +97,7 @@ Alternatively install Inno Setup yourself and supply
 prepare and smoke-check the private runtime without compiling the installer.
 The compiler bootstrap is a developer build step, not something end users run.
 
-For release builds, commit the source and add `--require-clean --tag v0.6.0`.
+For release builds, commit the source and add `--require-clean --tag v0.7.0`.
 This embeds the source commit/tree and emits `SHA256SUMS.txt`, `build-info.json`
 and short release notes alongside the versioned installer. The existing GitHub
 workflow builds on matching version tags and verifies setup/ND2 exports before
