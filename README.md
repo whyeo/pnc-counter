@@ -19,6 +19,13 @@ multiscale prominence scores with compact Z evidence. Its predefined control
 comparison **failed the separation/preservation trade-off**; legacy defaults are
 retained. See [local preview testing and limitations](docs/v070-preview.md).
 
+**Source-only exploration: `0.7.0.dev4`.** A dev2 loss audit and a new 60/40
+development/validation comparison tested enrichment, optional matched controls and
+an intensity-mixture diagnostic. None established the required biological trade-off;
+no product method or default changed, and no new installer was built. The last
+packaged preview remains `0.7.0.dev2`. See the versioned
+[BEFORE dev2 / AFTER dev4 report](docs/v070-enrichment-exploration.md).
+
 **Accuracy status:** automatic PNC classification still needs calibration and
 manual review. HeLa control-folder testing found substantial positive calls in
 the negative group and very few in the small-PNC group. SAM finds nucleus
@@ -422,7 +429,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m ruff check src tests tools
 python -m build
-python -m pip install dist/nucleus_analysis-0.7.0.dev2-py3-none-any.whl
+python -m pip install dist/nucleus_analysis-0.7.0.dev4-py3-none-any.whl
 ```
 
 The wheel contains only Python code and the small exported SVM, with no raw data,

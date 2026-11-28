@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.7.0 source exploration (0.7.0.dev3 / 0.7.0.dev4, not finalized)
+
+- Added exact dev2 candidate-loss instrumentation and bounded, one-factor ablations.
+- Added a new immutable 60/40 development/validation manifest with acquisition
+  metadata, unchanged SAM geometry, source/export hashes and dev2 artifact protection.
+- Added research-only enrichment measurements, permissive connected support,
+  optional strictly compatible development-control profiles and one/two-component
+  intensity-mixture diagnostics with explicit fallbacks. No new dependency is required.
+- Preserved the failed dev3 threshold range; made one development-only dev4 range
+  correction before validation, with candidate preparation unchanged.
+- Reported paired versioned BEFORE/AFTER curves, denominators, losses and visual
+  failures. The new frozen points increase negative-group calls; no replacement is
+  adopted. Calibration lacked compatible replicated controls for validation.
+- Existing live review, protocols, overrides and immutable revisions remain
+  unchanged. No dev3/dev4 installer, stable tag or publication was created.
+- See [the versioned exploration report](docs/v070-enrichment-exploration.md).
+
 ## v0.7.0 development preview (0.7.0.dev2, not finalized)
 
 - Initial channel previews now use the same selected maximum Z projection as
