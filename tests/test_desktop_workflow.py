@@ -65,6 +65,21 @@ def app(tmp_path, tk_window):
     root.destroy()
 
 
+def test_large_main_buttons_remain_visible_at_minimum_window_size(app):
+    root = app.root
+    root.geometry("920x650")
+    root.deiconify()
+    root.update()
+    left, top = root.winfo_rootx(), root.winfo_rooty()
+    right, bottom = left + root.winfo_width(), top + root.winfo_height()
+    for widget in [*(w for w, _ in app.controls), app.cancel_button]:
+        assert widget.winfo_viewable(), widget.cget("text")
+        assert widget.winfo_height() >= 32
+        assert widget.winfo_rootx() >= left
+        assert widget.winfo_rootx() + widget.winfo_width() <= right
+        assert widget.winfo_rooty() + widget.winfo_height() <= bottom
+
+
 def test_saved_profile_and_runtime_invalidation(tmp_path, monkeypatch):
     path = tmp_path / "preferences.json"
     hardware = {"device": "cuda", "name": "Test GPU", "runtime": runtime_signature()}

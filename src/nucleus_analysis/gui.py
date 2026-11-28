@@ -76,6 +76,8 @@ class CounterApp:
         root.geometry("1180x800")
         root.minsize(920, 650)
         root.protocol("WM_DELETE_WINDOW", self.close)
+        style = ttk.Style(root)
+        style.configure("Main.TButton", font=("Segoe UI", 10), padding=(12, 8))
         frame = ttk.Frame(root, padding=14)
         frame.pack(fill="both", expand=True)
         frame.columnconfigure(0, weight=1)
@@ -97,7 +99,8 @@ class CounterApp:
         for label, command in [("Analyze images", self.start), ("Check channels", self.check_channels),
                                ("Review results", self.review_selected), ("Open results folder", self.open_results)]:
             self._button(actions, label, command).pack(side="left", padx=(0, 6))
-        self.cancel_button = ttk.Button(actions, text="Stop after this image", command=self.cancel.set, state="disabled")
+        self.cancel_button = ttk.Button(actions, text="Stop after this image", command=self.cancel.set,
+                                        state="disabled", style="Main.TButton")
         self.cancel_button.pack(side="right")
         panes = ttk.PanedWindow(frame, orient="horizontal")
         panes.grid(row=4, column=0, sticky="nsew")
@@ -120,7 +123,8 @@ class CounterApp:
         self.preview.pack(fill="both", expand=True)
         self.preview_caption = tk.StringVar(value="Preview contrast is adjusted for display only.")
         ttk.Label(preview_frame, textvariable=self.preview_caption, wraplength=430).pack(fill="x", pady=6)
-        ttk.Button(preview_frame, text="Set shared marker display range", command=self.set_display_range).pack(fill="x")
+        ttk.Button(preview_frame, text="Set shared marker display range", command=self.set_display_range,
+                   style="Main.TButton").pack(fill="x")
         panes.add(preview_frame, weight=2)
         output_row = ttk.Frame(frame)
         output_row.grid(row=5, column=0, sticky="ew", pady=10)
@@ -160,7 +164,7 @@ class CounterApp:
                 Path(__file__).resolve().parents[2] / "models")
 
     def _button(self, parent, text, command):
-        widget = ttk.Button(parent, text=text, command=command)
+        widget = ttk.Button(parent, text=text, command=command, style="Main.TButton")
         self.controls.append((widget, "normal"))
         return widget
 

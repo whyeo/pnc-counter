@@ -81,6 +81,19 @@ def test_native_side_panel_visibility_calls_numbering_and_drawing(tk_window, tmp
     editor.window.geometry("950x650")
     try:
         tk_window.update()
+        assert not editor._initial_fit_pending
+        h, w = editor.session.shape
+        assert w * editor.scale <= editor.canvas.winfo_width() + 1
+        assert h * editor.scale <= editor.canvas.winfo_height() + 1
+        assert editor.pnc_left_label.winfo_rootx() == editor.pnc_slider.winfo_rootx()
+        assert abs(editor.pnc_right_label.winfo_rootx() + editor.pnc_right_label.winfo_width()
+                   - editor.pnc_slider.winfo_rootx() - editor.pnc_slider.winfo_width()) <= 1
+        editor.zoom(1.25)
+        zoomed = editor.scale
+        editor.window.withdraw()
+        editor.window.deiconify()
+        tk_window.update()
+        assert editor.scale == zoomed  # Remapping must preserve deliberate zoom.
         assert editor.list_ids == [55, 9, 3]
         assert editor.listbox.get(0).startswith("1:")
         bottom = editor.window.winfo_rooty() + editor.window.winfo_height()

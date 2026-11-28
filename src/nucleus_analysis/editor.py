@@ -77,6 +77,8 @@ class ReviewEditor:
         self.display_contrast = None
         self.inspection_plane = None
         self.inspection_z = None
+        self._initial_fit_pending = True
+        self._initial_fit_after = None
         self.parent = parent
         from .review_layout import build_review_layout
 
@@ -85,6 +87,17 @@ class ReviewEditor:
         self.scale = min(1.0, 850 / w, 650 / h)
         self.refresh()
         self._poll_id = self.window.after(100, self.poll)
+
+    def schedule_initial_fit(self, _event=None):
+        if self._initial_fit_pending and self._initial_fit_after is None:
+            # Wait for the mapped window's sidebar and canvas to finish layout.
+            self._initial_fit_after = self.window.after_idle(self.fit_initial_image)
+
+    def fit_initial_image(self):
+        self._initial_fit_after = None
+        if self._initial_fit_pending:
+            self._initial_fit_pending = False
+            self.fit()
 
     def button(self, parent, text, command, **kwargs):
         widget = ttk.Button(parent, text=text, command=command, style="Review.TButton", **kwargs)
@@ -249,7 +262,8 @@ class ReviewEditor:
             self.enrichment_controls.grid()
             self.pnc_readout_label.grid_remove()
             self.threshold_title.set("PNC threshold")
-            self.pnc_direction.set("More sensitive                    Stricter")
+            self.pnc_left_caption.set("More sensitive")
+            self.pnc_right_caption.set("Stricter")
             self.pnc_readout.set(f"Local enrichment threshold: {config.pnc_enrichment_threshold:.2f}x")
         else:
             self.enrichment_controls.grid_remove()
@@ -257,7 +271,8 @@ class ReviewEditor:
             self.threshold_title.set("PNC sensitivity" if adaptive else "PNC method")
             self.pnc_slider.configure(from_=0, to=100, variable=self.pnc_sensitivity,
                                       state="normal" if adaptive else "disabled")
-            self.pnc_direction.set("Stricter                 More sensitive")
+            self.pnc_left_caption.set("Stricter" if adaptive else "")
+            self.pnc_right_caption.set("More sensitive" if adaptive else "")
             self.pnc_readout.set(f"Sensitivity: {config.pnc_sensitivity:.1f} / 100" if adaptive
                 else "Stored pixel/spot protocol. Advanced settings contains its thresholds.")
         if config.pnc_mode == "prominence":
@@ -640,7 +655,7 @@ class ReviewEditor:
 
     def fit(self):
         h, w = self.session.shape
-        self.scale = min(8, max(0.1, min(self.canvas.winfo_width() / w, self.canvas.winfo_height() / h)))
+        self.scale = min(8, self.canvas.winfo_width() / w, self.canvas.winfo_height() / h)
         self.render()
         self.canvas.xview_moveto(0)
         self.canvas.yview_moveto(0)
@@ -740,4 +755,6 @@ class ReviewEditor:
         self.window.after_cancel(self._poll_id)
         if self._pnc_after:
             self.window.after_cancel(self._pnc_after)
+        if self._initial_fit_after:
+            self.window.after_cancel(self._initial_fit_after)
         self.window.destroy()

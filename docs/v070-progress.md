@@ -34,6 +34,17 @@ this is a local check, not a speed improvement claim.
 See the [native dev6 window](../validation/local/pnc-discrimination/v070-dev6/native-side-panel.png)
 and [saved-field check](../validation/local/pnc-discrimination/v070-dev6/slider/slider-verification.json).
 
+Dev6 owner-feedback follow-up: initial review opening now automatically fits the
+image; subsequent window remapping preserves user zoom. Sensitivity captions
+anchor independently to the slider endpoints, and main-window buttons use larger
+padding/type. **51 targeted desktop/review tests passed**, including auto-fit,
+caption alignment and main-button visibility at 920x650; Ruff and whitespace
+checks passed. This follow-up changes UI behavior, not detector scoring.
+The saved-field opening check also fits the image without calling Fit manually;
+counts remain 65/74 at 1.8x. See the
+[updated review window](../validation/local/pnc-discrimination/v070-dev6/layout-followup/review-window.png)
+and [larger main-window buttons](../validation/local/pnc-discrimination/v070-dev6/layout-followup/main-window.png).
+
 The bridge completed implementation locally after the v0.7 session handoff did
 not acknowledge delivery. The latest usage guide is [README.md](../README.md);
 version history is in [CHANGELOG.md](../CHANGELOG.md).

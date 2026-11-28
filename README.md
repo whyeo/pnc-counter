@@ -62,6 +62,9 @@ Open **Review results** or **Open saved analysis**. Saved analyses can
 be reviewed using their stored images and masks without loading SAM or the
 original ND2 file.
 
+The image fits the review canvas automatically when the window first opens.
+Use **Fit image** to restore that view after zooming or panning.
+
 - Select a nucleus to inspect its automatic call and any review flags.
 - The fixed side panel keeps **PNC+**, **PNC−**, **Auto**, **Exclude nucleus**,
   and **Checked & next** visible. Exclusion removes an unsuitable segmentation
