@@ -110,7 +110,9 @@ def test_review_slider_reuses_features_and_saved_calls_match(tmp_path, monkeypat
     assert "PNCSignalScore" in (tmp_path / "original/nuclei.csv").read_text()
 
 
-def test_desktop_slider_latest_request_and_revision_without_sam(tk_window, tmp_path, monkeypatch):
+@pytest.mark.parametrize("label, mode", [("Background-aware (preview)", "adaptive"),
+                                         ("Multiscale prominence (preview)", "prominence")])
+def test_desktop_slider_latest_request_and_revision_without_sam(tk_window, tmp_path, monkeypatch, label, mode):
     import time
 
     from nucleus_analysis import review
@@ -124,12 +126,12 @@ def test_desktop_slider_latest_request_and_revision_without_sam(tk_window, tmp_p
     chosen = []
     editor = ReviewEditor(tk_window, tmp_path / "analysis", on_protocol=chosen.append)
     builds = []
-    original = review.prepare_adaptive
+    original = getattr(review, "prepare_" + ("adaptive" if mode == "adaptive" else "prominence"))
     def slow(*args, **kwargs):
         builds.append(True)
         time.sleep(.20)
         return original(*args, **kwargs)
-    monkeypatch.setattr(review, "prepare_adaptive", slow)
+    monkeypatch.setattr(review, "prepare_" + ("adaptive" if mode == "adaptive" else "prominence"), slow)
     monkeypatch.setattr("nucleus_analysis.segmentation.Segmenter.generate",
                         lambda *a: pytest.fail("Slider/save must not rerun SAM"))
 
@@ -140,13 +142,13 @@ def test_desktop_slider_latest_request_and_revision_without_sam(tk_window, tmp_p
             time.sleep(.01)
         assert condition()
     try:
-        editor.pnc_method.set("Background-aware (preview)")
+        editor.pnc_method.set(label)
         editor.pnc_sensitivity.set(0)
         editor.schedule_pnc_preview()
         pump(lambda: editor.busy)
         editor.pnc_sensitivity.set(100)
         editor.schedule_pnc_preview()
-        pump(lambda: not editor.busy and editor.session.config.pnc_mode == "adaptive"
+        pump(lambda: not editor.busy and editor.session.config.pnc_mode == mode
              and editor.session.config.pnc_sensitivity == 100)
         assert len(builds) == 1
         editor.use_pnc_protocol()

@@ -13,20 +13,22 @@ import numpy as np
 from PIL import Image, ImageTk
 from scipy import ndimage as ndi
 
-from .imaging import scale_uint8
+from .imaging import display_uint8
 from .review import ReviewSession
 
-PNC_METHODS = {"Background-aware (preview)": "adaptive", "Legacy pixel count": "pixels", "Legacy spot count": "spots"}
+PNC_METHODS = {"Multiscale prominence (preview)": "prominence", "Background-aware (preview)": "adaptive",
+               "Legacy pixel count": "pixels", "Legacy spot count": "spots"}
 
 
-def render_review(session, selected=(), channel="DAPI", show_masks=True):
+def render_review(session, selected=(), channel="DAPI", show_masks=True, contrast=None, plane=None):
     """Render masks in original pixel coordinates, including flagged/rejected objects."""
     _, details = session.counts()
     dapi = session.projections.dapi_max
+    marker = display_uint8(session.projections.pnc_max if plane is None else plane, contrast)
     if channel == "DAPI + PNC":
-        base = np.stack([scale_uint8(session.projections.pnc_max), dapi // 3, dapi], axis=-1)
+        base = np.stack([marker, dapi // 3, dapi], axis=-1)
     else:
-        gray = {"DAPI": dapi, "PNC": scale_uint8(session.projections.pnc_max),
+        gray = {"DAPI": dapi, "PNC": marker,
                 "PNC threshold": session._positive_pixels.astype(np.uint8) * 255}[channel]
         base = np.repeat(gray[..., None], 3, axis=-1)
     if not show_masks:
@@ -48,6 +50,10 @@ def render_review(session, selected=(), channel="DAPI", show_masks=True):
         edge = local & ~ndi.binary_erosion(local, structure=np.ones((3, 3)), border_value=0)
         ey, ex = np.nonzero(edge)
         base[ey + y0, ex + x0] = edge_color
+    if session.config.pnc_mode in ("adaptive", "prominence"):
+        from skimage.segmentation import find_boundaries
+
+        base[find_boundaries(session._spot_labels, mode="inner")] = (40, 255, 100)
     return Image.fromarray(base)
 
 
@@ -68,6 +74,9 @@ class ReviewEditor:
         self.busy = False
         self.events = queue.Queue()
         self.photo = None
+        self.display_contrast = None
+        self.inspection_plane = None
+        self.inspection_z = None
         self.window = tk.Toplevel(parent)
         self.window.title(f"Review nuclei - {self.directory.name}")
         self.window.geometry("1180x820")
@@ -143,6 +152,11 @@ class ReviewEditor:
         ttk.Label(tuning, textvariable=self.pnc_readout, wraplength=225).pack(fill="x", pady=4)
         ttk.Label(tuning, text="Preview uses saved nuclei. Save a new revision to keep these calls. Manual calls are retained.",
                   wraplength=225).pack(fill="x")
+        self.evidence_readout = tk.StringVar()
+        ttk.Label(tuning, textvariable=self.evidence_readout, wraplength=225).pack(fill="x", pady=4)
+        self.button(tuning, "Load Z evidence from source", self.load_z_evidence).pack(fill="x")
+        self.button(tuning, "Inspect candidate Z plane", self.inspect_z_plane).pack(fill="x")
+        self.button(tuning, "Return to maximum projection", self.return_projection).pack(fill="x")
         if on_protocol:
             self.button(tuning, "Use for next analysis", self.use_pnc_protocol).pack(fill="x", pady=4)
         ttk.Label(sidebar, text="Select nuclei (Ctrl+click for multiple)", wraplength=225).pack(anchor="w")
@@ -177,6 +191,7 @@ class ReviewEditor:
         self.button(controls, "Zoom +", lambda: self.zoom(1.25)).pack(side="left")
         self.button(controls, "Zoom -", lambda: self.zoom(0.8)).pack(side="left", padx=4)
         self.button(controls, "Fit image", self.fit).pack(side="left")
+        self.button(controls, "Marker display range", self.set_display_range).pack(side="left", padx=4)
         ttk.Checkbutton(controls, text="Show masks", variable=self.show_masks, command=self.render).pack(side="left", padx=10)
         ttk.Checkbutton(controls, text="Show IDs", variable=self.show_ids, command=self.render).pack(side="left")
         self.status = tk.StringVar(value=self.session.warning or
@@ -197,6 +212,85 @@ class ReviewEditor:
         widget = ttk.Button(parent, text=text, command=command)
         self.buttons.append(widget)
         return widget
+
+    def set_display_range(self):
+        value = simpledialog.askstring("Marker display contrast", "Raw minimum, maximum (blank = auto). Display only.",
+                                      initialvalue=", ".join(map(str, self.display_contrast or ())), parent=self.window)
+        if value is None:
+            return
+        try:
+            limits = tuple(map(float, value.split(","))) if value.strip() else None
+            display_uint8(self.session.projections.pnc_max, limits)
+            self.display_contrast = limits
+            self.status.set(f"Marker display range: {limits or 'auto'}. Measured calls unchanged.")
+            self.render()
+        except ValueError as exc:
+            messagebox.showerror("Display range", str(exc), parent=self.window)
+
+    def load_z_evidence(self):
+        if self.busy or self.points or self._pnc_after or self._pending_pnc:
+            return
+        from .projection_cache import read_cached
+
+        source = self.session.projections.metadata.get("source")
+        if not source or not Path(source).is_file():
+            self.status.set("Raw source unavailable. Continue with the labeled 2D projection fallback.")
+            return
+        config = replace(self.session.config, pnc_mode="prominence", pnc_z_policy="auto")
+        old = self.session.projections
+        cache = self.directory / ".cache"
+        self.busy = True
+        for widget in self.buttons:
+            widget.configure(state="disabled")
+        self.status.set("Reading compact Z evidence from the selected acquisition; nucleus masks stay fixed...")
+
+        def worker():
+            try:
+                projections = read_cached(source, config, cache=cache)
+                if any(not np.array_equal(getattr(old, k), getattr(projections, k))
+                       for k in ("dapi_mean", "dapi_max", "pnc_max")):
+                    raise ValueError("Raw projections differ from this analysis. Reanalyze the source explicitly.")
+                self.events.put(("z_evidence", (projections, config)))
+            except Exception as exc:
+                self.events.put(("evidence_error", str(exc)))
+        self._pnc_worker = threading.Thread(target=worker, daemon=True)
+        self._pnc_worker.start()
+
+    def return_projection(self):
+        self.inspection_plane = self.inspection_z = None
+        self.status.set("Maximum Z projection. Display changes do not change scoring.")
+        self.render()
+
+    def inspect_z_plane(self):
+        if self.busy or len(self.selected) != 1 or self.session.config.pnc_mode != "prominence":
+            self.status.set("Select one nucleus using Multiscale prominence with Z evidence first.")
+            return
+        identifier = next(iter(self.selected))
+        candidates = [c for c in self.session._adaptive_features.candidates if c["NucleusID"] == identifier and c["BestZ"] is not None]
+        if not candidates:
+            self.status.set("No candidate has saved Z evidence. Load evidence from the raw source first.")
+            return
+        candidate = max(candidates, key=lambda c: c["SignalScore"])
+        source = self.session.projections.metadata.get("source")
+        if not source or not Path(source).is_file():
+            self.status.set("Raw source unavailable. Compact Z measurements remain available in the saved candidates.")
+            return
+        from .imaging import read_marker_plane
+
+        config, z = self.session.config, candidate["BestZ"]
+        self.busy = True
+        for widget in self.buttons:
+            widget.configure(state="disabled")
+        def worker():
+            try:
+                plane = read_marker_plane(source, config, z)
+                if plane.shape != self.session.shape:
+                    raise ValueError("Source plane shape differs from the saved projection")
+                self.events.put(("z_inspection", (plane, z)))
+            except Exception as exc:
+                self.events.put(("evidence_error", str(exc)))
+        self._pnc_worker = threading.Thread(target=worker, daemon=True)
+        self._pnc_worker.start()
 
     def image_point(self, event):
         x, y = self.canvas.canvasx(event.x) / self.scale, self.canvas.canvasy(event.y) / self.scale
@@ -219,9 +313,9 @@ class ReviewEditor:
         mode = PNC_METHODS[self.pnc_method.get()]
         config = replace(self.session.config, pnc_mode=mode,
                          pnc_sensitivity=round(self.pnc_sensitivity.get(), 1))
-        self.pnc_slider.configure(state="normal" if mode == "adaptive" else "disabled")
-        self.pnc_readout.set(f"Sensitivity: {config.pnc_sensitivity:.1f} / 100" if mode == "adaptive"
-                             else "Select Background-aware to use the slider. Legacy thresholds are in Advanced settings.")
+        self.pnc_slider.configure(state="normal" if mode in ("adaptive", "prominence") else "disabled")
+        self.pnc_readout.set(f"Sensitivity: {config.pnc_sensitivity:.1f} / 100" if mode in ("adaptive", "prominence")
+                             else "Select a preview detector to use the slider. Legacy thresholds are in Advanced settings.")
         self._pending_pnc = (self._pnc_token, config)
         if self.busy or self._pnc_worker and self._pnc_worker.is_alive():
             return
@@ -375,10 +469,17 @@ class ReviewEditor:
         self._syncing_pnc = True
         self.pnc_method.set(next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
         self.pnc_sensitivity.set(self.session.config.pnc_sensitivity)
-        adaptive = self.session.config.pnc_mode == "adaptive"
+        adaptive = self.session.config.pnc_mode in ("adaptive", "prominence")
         self.pnc_slider.configure(state="normal" if adaptive else "disabled")
         self.pnc_readout.set(f"Sensitivity: {self.session.config.pnc_sensitivity:.1f} / 100" if adaptive
-                             else "Select Background-aware to use the slider. Legacy thresholds are in Advanced settings.")
+                             else "Select a preview detector to use the slider. Legacy thresholds are in Advanced settings.")
+        config = self.session.config
+        info = self.session.projections.metadata.get("pnc_evidence", {})
+        self.evidence_readout.set(
+            f"Max Z | C{config.pnc_channel} T{config.time_index} P{config.position_index}\n" +
+            (f"Per-plane evidence: {info['planes']} planes. No multi-slice requirement."
+             if self.session.projections.pnc_evidence and config.pnc_z_policy == "auto" and config.pnc_mode == "prominence"
+             else "2D projection scoring; no Z evidence used."))
         self._syncing_pnc = False
         counts, details = self.session.counts()
         percent = f"{counts['percentage']:.2f}%" if counts["percentage"] is not None else "N/A"
@@ -503,7 +604,8 @@ class ReviewEditor:
         threading.Thread(target=worker, daemon=True).start()
 
     def render(self):
-        image = render_review(self.session, self.selected, self.channel.get(), self.show_masks.get())
+        image = render_review(self.session, self.selected, self.channel.get(), self.show_masks.get(), self.display_contrast,
+                              self.inspection_plane)
         w, h = image.size
         size = (max(1, round(w * self.scale)), max(1, round(h * self.scale)))
         image = image.resize(size, Image.Resampling.NEAREST if self.scale > 1 else Image.Resampling.LANCZOS)
@@ -514,7 +616,11 @@ class ReviewEditor:
         self.canvas.configure(scrollregion=(0, 0, *size))
         self.canvas.delete("ids")
         self.canvas.delete("spots")
-        if self.session.config.pnc_mode in ("spots", "adaptive") and self.show_masks.get():
+        self.canvas.delete("evidence_label")
+        if self.inspection_plane is not None:
+            self.canvas.create_text(8, 8, text=f"Inspection only: Z{self.inspection_z}. Calls use the saved projection protocol.",
+                                    fill="#ffff40", anchor="nw", tags="evidence_label")
+        if self.session.config.pnc_mode in ("spots", "adaptive", "prominence") and self.show_masks.get():
             for spot in self.session._spot_rows:
                 x, y = (spot["CentroidX"] - 1) * self.scale, (spot["CentroidY"] - 1) * self.scale
                 self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, outline="#40ff80", width=2, tags="spots")
@@ -618,6 +724,21 @@ class ReviewEditor:
                 self.refresh()
                 if self.on_saved:
                     self.on_saved(directory, stats)
+            elif kind == "z_evidence":
+                projections, config = payload
+                self.session.set_pnc_config(config)
+                self.session.projections = projections
+                self.session._record("load_z_evidence", [], "Raw projections verified equal; compact per-plane evidence added")
+                self.status.set("Z evidence loaded. Review the calls and save a new revision to retain it.")
+                self.refresh()
+            elif kind == "evidence_error":
+                self.status.set(f"Z evidence unavailable: {payload}. Continue with 2D projection scoring.")
+                self.refresh()
+            elif kind == "z_inspection":
+                self.inspection_plane, self.inspection_z = payload
+                self.channel.set("PNC")
+                self.status.set(f"Inspection-only Z{self.inspection_z}; marker contrast and navigation are shared. Saved calls unchanged.")
+                self.render()
             else:
                 self.status.set("Save failed; edits remain available. Choose a writable folder and retry.")
                 messagebox.showerror("Save revision", payload, parent=self.window)

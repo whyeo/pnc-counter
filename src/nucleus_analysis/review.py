@@ -26,6 +26,8 @@ from .phenotype import (
     touches_border,
 )
 from .pipeline import analyze, threshold_pnc
+from .pnc_evidence import selected_evidence
+from .prominence_pnc import prepare_prominence, select_prominence
 from .segmentation import file_sha256, load_masks, save_masks, validate_candidates
 
 
@@ -109,6 +111,7 @@ class ReviewSession:
 
     def _signature(self):
         digest = hashlib.sha256(json.dumps(self.config.to_dict(), sort_keys=True).encode())
+        digest.update(json.dumps(self.projections.metadata.get("pnc_evidence"), sort_keys=True).encode())
         digest.update(self.reviewer.encode())
         digest.update(str(self.empty_reviewed).encode())
         for identifier, mask in sorted(self.masks.items()):
@@ -124,7 +127,8 @@ class ReviewSession:
         config = AnalysisConfig(**metadata["config"])
         with np.load(directory / "images.npz", allow_pickle=False) as data:
             projections = Projections(data["ch1"].copy(), data["ch1_max"].copy(),
-                                      data["ch2"].copy(), metadata.get("input", {}))
+                                      data["ch2"].copy(), metadata.get("input", {}),
+                                      {k[6:]: data[k].copy() for k in data.files if k.startswith("pnc_z_")})
             fallback_labels = {key: data[key].copy() for key in ("mask_overall", "mask_bad")}
         with (directory / "nuclei.csv").open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
@@ -368,15 +372,18 @@ class ReviewSession:
 
     def _update_marker(self):
         geometry = None
-        if self.config.pnc_mode == "adaptive":
+        if self.config.pnc_mode in ("adaptive", "prominence"):
             calibration = pixel_size(self.config, self.projections.metadata)
             active = [(i, mask.pixels) for i, mask in self.masks.items() if not mask.rejected
                       and not (self.config.border_policy == "exclude"
                                and touches_border(mask.pixels, self.shape, self.config.border_margin))]
-            geometry = (tuple((i, id(pixels)) for i, pixels in active), calibration, self.config.spot_min_distance)
+            geometry = (tuple((i, id(pixels)) for i, pixels in active), calibration, self.config.spot_min_distance,
+                        self.config.pnc_mode, self.config.pnc_z_policy, id(self.projections))
             if self._adaptive_geometry_key != geometry:
-                self._adaptive_features = prepare_adaptive(self.projections.pnc_max,
-                    [p for _, p in active], [i for i, _ in active], calibration, self.config.spot_min_distance)
+                prepare = prepare_prominence if self.config.pnc_mode == "prominence" else prepare_adaptive
+                options = {"evidence": selected_evidence(self.projections, self.config), "z_policy": self.config.pnc_z_policy} if self.config.pnc_mode == "prominence" else {}
+                self._adaptive_features = prepare(self.projections.pnc_max,
+                    [p for _, p in active], [i for i, _ in active], calibration, self.config.spot_min_distance, **options)
                 self._adaptive_geometry_key = geometry
                 # Retain immutable source arrays so their identities cannot be
                 # recycled while this cache key is active.
@@ -384,8 +391,9 @@ class ReviewSession:
         marker_key = (self.config, geometry)
         if self._marker_config == marker_key:
             return
-        if self.config.pnc_mode == "adaptive":
-            self._positive_pixels, self._spot_labels, self._spot_rows = select_adaptive(
+        if self.config.pnc_mode in ("adaptive", "prominence"):
+            select = select_prominence if self.config.pnc_mode == "prominence" else select_adaptive
+            self._positive_pixels, self._spot_labels, self._spot_rows = select(
                 self._adaptive_features, self.config.pnc_sensitivity, self.config.spot_min_area, self.config.spot_max_area)
         else:
             self._positive_pixels = threshold_pnc(marker_image(self.projections.pnc_max, self.config), self.config)
@@ -407,7 +415,7 @@ class ReviewSession:
         for identifier, mask in self.masks.items():
             pixels = int(self._positive_pixels.ravel()[mask.pixels].sum())
             excluded = status[identifier]["BadMask"]
-            call = (spot_counts[identifier] >= self.config.min_spot_count if self.config.pnc_mode in ("spots", "adaptive")
+            call = (spot_counts[identifier] >= self.config.min_spot_count if self.config.pnc_mode in ("spots", "adaptive", "prominence")
                     else pixels >= self.config.positive_threshold)
             if mask.pnc_override is not None:
                 call = mask.pnc_override
@@ -415,8 +423,10 @@ class ReviewSession:
             details[identifier] = {"positive_pixels": pixels, "positive": is_positive,
                                    "spots": spot_counts[identifier], "rejected": bool(excluded),
                                    "border": status[identifier]["TouchesBorder"]}
-            if self.config.pnc_mode == "adaptive":
+            if self.config.pnc_mode in ("adaptive", "prominence"):
                 details[identifier]["signal_score"] = self._adaptive_features.measurements.get(identifier, {}).get("max_score", 0.)
+                details[identifier]["candidate_flags"] = sorted({flag for row in self._adaptive_features.candidates
+                    if row["NucleusID"] == identifier for flag in row.get("ReviewFlags", "").split("; ") if flag})
             rejected += excluded
             positive += is_positive
             negative += not excluded and not is_positive
@@ -438,10 +448,13 @@ class ReviewSession:
             if mask.flagged:
                 reasons.append("flagged for follow-up")
                 priority += 100
+            for reason in details[identifier].get("candidate_flags", []):
+                reasons.append(reason)
+                priority += 5
             if details[identifier]["border"]:
                 reasons.append("partial/border nucleus")
                 priority += 40
-            spot_mode = self.config.pnc_mode in ("spots", "adaptive")
+            spot_mode = self.config.pnc_mode in ("spots", "adaptive", "prominence")
             value = details[identifier]["spots"] if spot_mode else details[identifier]["positive_pixels"]
             cutoff = self.config.min_spot_count if spot_mode else self.config.positive_threshold
             margin = 0 if spot_mode else self.config.review_positive_margin

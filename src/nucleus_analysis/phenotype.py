@@ -57,7 +57,7 @@ def detect_spots(positive_pixels, config):
     outside a concave spot cannot accidentally attach it to another nucleus.
     """
     labels = np.zeros(positive_pixels.shape, dtype=np.uint32)
-    if config.pnc_mode not in ("spots", "adaptive") or not positive_pixels.any():
+    if config.pnc_mode not in ("spots", "adaptive", "prominence") or not positive_pixels.any():
         return labels, []
     components, _ = ndi.label(positive_pixels, structure=np.ones((3, 3)))
     distance = ndi.distance_transform_edt(positive_pixels)

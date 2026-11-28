@@ -31,7 +31,8 @@ def build_parser():
     choices = {"backend": ["sam2", "sam3", "watershed"], "threshold_mode": ["local", "global"],
                "quality_filter": ["none", "legacy-svm"], "sam2_model": ["tiny", "small", "base_plus", "large"],
                "device": ["cpu", "cuda", "mps"], "border_policy": ["include", "exclude"],
-               "pnc_mode": ["pixels", "spots", "adaptive"]}
+               "pnc_mode": ["pixels", "spots", "adaptive", "prominence"],
+               "pnc_z_policy": ["auto", "projection"]}
     types = {"min_nucleus_area": int, "max_nucleus_area": int, "positive_threshold": int,
              "image_threshold": float, "pnc_sensitivity": float, "neighborhood_size": int, "dapi_channel": int,
              "pnc_channel": int, "time_index": int, "position_index": int,

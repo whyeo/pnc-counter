@@ -56,7 +56,7 @@ def visualization(result):
     panels = [Image.fromarray(result.images["ch1_max"]).convert("RGB"), overlay(result),
               Image.fromarray(scale_uint8(result.images["ch2"])).convert("RGB"),
               Image.fromarray(result.images["ch2_thresh"].astype(np.uint8) * 255).convert("RGB")]
-    if result.config.pnc_mode in ("spots", "adaptive"):
+    if result.config.pnc_mode in ("spots", "adaptive", "prominence"):
         draw_spots = ImageDraw.Draw(panels[3])
         for spot in result.spots or []:
             x, y = spot["CentroidX"] - 1, spot["CentroidY"] - 1
@@ -96,6 +96,26 @@ def export_result(result, directory, *, provenance=None):
                                      "score_units": "robust intranuclear noise units; not a probability",
                                      "candidate_support": "fixed half-height connected region",
                                      "validation_status": "experimental; requires reviewed controls"}
+    if result.config.pnc_mode == "prominence":
+        from .phenotype import pixel_size
+        from .prominence_pnc import ALGORITHM, MAPPING, sensitivity_threshold
+
+        metadata["pnc_detection"] = {
+            "algorithm": ALGORITHM, "sensitivity": result.config.pnc_sensitivity,
+            "sensitivity_mapping": MAPPING,
+            "candidate_score_threshold": sensitivity_threshold(result.config.pnc_sensitivity),
+            "score_units": "detector score; not a probability",
+            "noise_floor": "max(robust noise, 2% background, 1e-6 image peak)",
+            "candidate_support": "fixed half-prominence region with raw spatial support",
+            "multiplicity": "divide by sqrt(1 + log1p(candidate count per nucleus))",
+            "scales_um": [.10, .20, .40], "background_scale_um": 1.5,
+            "pixel_scale_fallback": [.75, 1.5, 3.], "background_fallback": 10.,
+            "pixel_size_um": pixel_size(result.config, result.metadata),
+            "z_policy": result.config.pnc_z_policy,
+            "evidence": result.metadata.get("pnc_evidence") if "pnc_z_score" in result.images else None,
+            "effective_evidence": "per-plane local prominence" if "pnc_z_score" in result.images and result.config.pnc_z_policy == "auto"
+                                  else "2D projection fallback; no Z evidence used",
+            "validation_status": "experimental; biological separation not established"}
     metadata["dependencies"] = {}
     for package in ("numpy", "scipy", "scikit-image", "nd2", "tifffile", "Pillow",
                     "torch", "torchvision", "SAM-2", "sam3"):
@@ -108,9 +128,12 @@ def export_result(result, directory, *, provenance=None):
     np.savez_compressed(directory / "images.npz", **result.images)
     if result.masks is not None:
         save_masks(directory / "nuclei_masks.npz", result.masks, result.images["ch1_max"].shape)
-    if result.config.pnc_mode in ("spots", "adaptive"):
+    if result.config.pnc_mode in ("spots", "adaptive", "prominence"):
         columns = ["SpotID", "Area", "CentroidX", "CentroidY", "AnchorPixel", "NucleusID"]
         columns += list(dict.fromkeys(key for row in result.spots or [] for key in row if key not in columns))
         write_csv(directory / "spots.csv", result.spots or [],
                   columns)
+    if result.candidates is not None:
+        columns = list(dict.fromkeys(k for row in result.candidates for k in row))
+        write_csv(directory / "pnc_candidates.csv", result.candidates, columns or ["SpotID", "SignalScore"])
     visualization(result).save(directory / "visualization.png")

@@ -19,6 +19,9 @@ from .phenotype import (
     segmentation_config,
     touches_border,
 )
+from .pnc_evidence import selected_evidence
+from .prominence_pnc import prepare_prominence, select_prominence
+from .prominence_pnc import sensitivity_threshold as prominence_threshold
 from .quality import is_bad_mask
 from .segmentation import Segmenter, load_masks, validate_candidates
 
@@ -32,6 +35,7 @@ class AnalysisResult:
     metadata: dict
     masks: list[np.ndarray] | None = None
     spots: list[dict] | None = None
+    candidates: tuple | None = None
 
 
 def threshold_pnc(image, config):
@@ -106,7 +110,7 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
         entries = list(zip(mask_ids, masks))
     else:
         entries = [(None, idx) for idx in sorted(masks, key=len)]
-    adaptive = config.pnc_mode == "adaptive"
+    adaptive = config.pnc_mode in ("adaptive", "prominence")
     positive_pixels = (np.zeros(pnc.shape, dtype=bool) if adaptive
                        else threshold_pnc(marker_image(pnc, config), config))
     spot_labels, spots = detect_spots(positive_pixels, config)
@@ -137,6 +141,7 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
                    Area_um2=float(len(idx) * calibration[0] * calibration[1]) if calibration else None)
         row.update(NumberCh2PixelsPositive=n_pixels, BadMask=int(rejected),
                    Positive=int(not rejected and n_pixels >= config.positive_threshold))
+        row.update(AutomaticPositive=row["Positive"], ManualPNCOverride="auto")
         if rejected:
             labels["mask_bad"].ravel()[idx] = row["MaskID"]
             bad += 1
@@ -153,24 +158,29 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
     prepared = None
     if adaptive:
         included = [(row, idx) for row, idx in zip(rows, retained_masks) if not row["BadMask"]]
-        prepared = prepare_adaptive(pnc, [idx for _, idx in included],
-                                    [row["MaskID"] for row, _ in included], calibration, config.spot_min_distance)
-        positive_pixels, spot_labels, spots = select_adaptive(prepared, config.pnc_sensitivity,
+        prepare = prepare_prominence if config.pnc_mode == "prominence" else prepare_adaptive
+        select = select_prominence if config.pnc_mode == "prominence" else select_adaptive
+        options = {"evidence": selected_evidence(projections, config), "z_policy": config.pnc_z_policy} if config.pnc_mode == "prominence" else {}
+        prepared = prepare(pnc, [idx for _, idx in included],
+                                    [row["MaskID"] for row, _ in included], calibration, config.spot_min_distance, **options)
+        positive_pixels, spot_labels, spots = select(prepared, config.pnc_sensitivity,
                                                               config.spot_min_area, config.spot_max_area)
         for row, idx in zip(rows, retained_masks):
             values = prepared.measurements.get(row["MaskID"], {})
             row.update(NumberCh2PixelsPositive=int(positive_pixels.ravel()[idx].sum()),
                        PNCSignalScore=values.get("max_score"), PNCBackground=values.get("background"),
-                       PNCNoise=values.get("noise"), PNCScoreThreshold=sensitivity_threshold(config.pnc_sensitivity))
-    if config.pnc_mode in ("spots", "adaptive") or positive_overrides:
+                       PNCNoise=values.get("noise"), PNCScoreThreshold=(prominence_threshold if config.pnc_mode == "prominence" else sensitivity_threshold)(config.pnc_sensitivity))
+    if config.pnc_mode in ("spots", "adaptive", "prominence") or positive_overrides:
         spot_counts = assign_spots(rows, retained_masks, spots)
         labels["mask_positive"].fill(0)
         labels["mask_negative"].fill(0)
         positive = negative = 0
         for row, idx in zip(rows, retained_masks):
             row["NumberPNCSpots"] = spot_counts[row["MaskID"]]
-            positive_call = (row["NumberPNCSpots"] >= config.min_spot_count if config.pnc_mode in ("spots", "adaptive")
+            positive_call = (row["NumberPNCSpots"] >= config.min_spot_count if config.pnc_mode in ("spots", "adaptive", "prominence")
                              else row["NumberCh2PixelsPositive"] >= config.positive_threshold)
+            row["AutomaticPositive"] = int(not row["BadMask"] and positive_call)
+            row["ManualPNCOverride"] = "auto" if row["MaskID"] not in (positive_overrides or {}) else int(positive_overrides[row["MaskID"]])
             positive_call = (positive_overrides or {}).get(row["MaskID"], positive_call)
             row["Positive"] = int(not row["BadMask"] and positive_call)
             if not row["BadMask"]:
@@ -183,11 +193,13 @@ def analyze(projections: Projections, config=None, masks=None, segmenter=None, *
                "n_total": total, "n_masks": len(rows)}
     images = {"ch1": mean, "ch1_max": maximum, "ch2": pnc,
               "ch2_thresh": positive_pixels, **labels}
-    if config.pnc_mode in ("spots", "adaptive"):
+    if config.pnc_mode in ("spots", "adaptive", "prominence"):
         images["pnc_spots"] = spot_labels
     if prepared is not None:
         images["pnc_score"] = prepared.score
-    return AnalysisResult(summary, rows, images, config, projections.metadata, retained_masks, spots)
+    if projections.pnc_evidence:
+        images.update({"pnc_z_" + k: v for k, v in projections.pnc_evidence.items()})
+    return AnalysisResult(summary, rows, images, config, projections.metadata, retained_masks, spots, prepared.candidates if prepared is not None else None)
 
 
 def count_pnc(path, positive_threshold=None, *, config=None, masks=None, axes=None):

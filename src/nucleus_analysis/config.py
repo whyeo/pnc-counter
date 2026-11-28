@@ -39,6 +39,7 @@ class AnalysisConfig:
     border_margin: int = 0
     pnc_mode: str = "pixels"
     pnc_sensitivity: float = 50.0
+    pnc_z_policy: str = "auto"
     min_spot_count: int = 1
     spot_min_area: int = 3
     spot_max_area: int = 500
@@ -53,7 +54,8 @@ class AnalysisConfig:
             "quality_filter": ("none", "legacy-svm"),
             "sam2_model": ("tiny", "small", "base_plus", "large"),
             "border_policy": ("include", "exclude"),
-            "pnc_mode": ("pixels", "spots", "adaptive"),
+            "pnc_mode": ("pixels", "spots", "adaptive", "prominence"),
+            "pnc_z_policy": ("auto", "projection"),
         }
         for name, allowed in choices.items():
             if getattr(self, name) not in allowed:

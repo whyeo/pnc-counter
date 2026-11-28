@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import platform
 import time
 import tkinter as tk
 from pathlib import Path
@@ -17,6 +18,8 @@ def main():
     parser.add_argument("--analysis", required=True, type=Path)
     parser.add_argument("--workdir", required=True, type=Path)
     parser.add_argument("--runtime", type=Path)
+    parser.add_argument("--method", choices=("adaptive", "prominence"), default="adaptive")
+    parser.add_argument("--load-z-evidence", action="store_true")
     args = parser.parse_args()
     if args.runtime:
         assert Path(nucleus_analysis.__file__).resolve().is_relative_to(args.runtime.resolve())
@@ -39,15 +42,20 @@ def main():
         assert condition(), editor.status.get()
 
     timings = []
+    warm = []
     try:
         with patch("nucleus_analysis.segmentation.Segmenter.generate", side_effect=AssertionError("SAM must not run")):
+            if args.load_z_evidence:
+                editor.load_z_evidence()
+                wait(lambda: not editor.busy)
+                assert editor.session.projections.pnc_evidence, editor.status.get()
             prepared = None
             for level in (0., 50., 100.):
                 started = time.perf_counter()
-                editor.pnc_method.set("Background-aware (preview)")
+                editor.pnc_method.set("Multiscale prominence (preview)" if args.method == "prominence" else "Background-aware (preview)")
                 editor.pnc_sensitivity.set(level)
                 editor.schedule_pnc_preview()
-                wait(lambda: not editor.busy and editor.session.config.pnc_mode == "adaptive"
+                wait(lambda: not editor.busy and editor.session.config.pnc_mode == args.method
                      and editor.session.config.pnc_sensitivity == level)
                 current = editor.session.counts()[0]
                 if prepared is not None:
@@ -55,6 +63,13 @@ def main():
                     assert current["n_positive"] >= timings[-1]["counts"]["n_positive"]
                 prepared = editor.session._adaptive_features
                 timings.append({"sensitivity": level, "seconds": time.perf_counter()-started, "counts": current})
+            for level in [float(v) for v in range(5, 101, 5)]:
+                started = time.perf_counter()
+                editor.pnc_sensitivity.set(level)
+                editor.schedule_pnc_preview()
+                wait(lambda: not editor.busy and editor.session.config.pnc_sensitivity == level)
+                assert editor.session._adaptive_features is prepared
+                warm.append(time.perf_counter()-started)
             assert all((editor.session.masks[i].pixels == pixels).all() for i, pixels in originals.items())
             previous = editor.directory
             editor.save_to(args.workdir / "revisions")
@@ -66,6 +81,12 @@ def main():
         report = {"passed": True, "version": nucleus_analysis.__version__, "installed_module": nucleus_analysis.__file__,
                   "sam_rerun": False, "geometry_unchanged": True, "slider": timings,
                   "saved_revision": str(editor.directory), "original_analysis": str(args.analysis.resolve())}
+        import numpy as np
+
+        report.update(method=args.method, image_shape=editor.session.shape, hardware={"platform": platform.platform(),
+                      "processor": platform.processor()}, warm_slider_seconds=warm,
+                      warm_median_seconds=float(np.median(warm)), warm_p95_seconds=float(np.percentile(warm, 95)),
+                      rendering="Tk/Pillow full field; window withdrawn; includes 180ms debounce and event polling")
         (args.workdir / "slider-verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report, indent=2), flush=True)
     finally:
