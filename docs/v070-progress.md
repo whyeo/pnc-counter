@@ -4,7 +4,8 @@ Updated 28 November 2026. This tracker records completed research, unresolved
 findings and the next approved work. **A completed experiment does not mean that
 its detector is ready for adoption.**
 
-Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev2**.
+Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev6**;
+the earlier dev2 installer and its original metadata are preserved.
 Previous measured research source: **0.7.0.dev4**, commit
 `9f565cf57857f146742f2dd3bc7335a1ddff1854` (step 7; documentation-only
 changes since step 4, with unchanged application algorithms). All frozen-method
@@ -20,7 +21,8 @@ above the image, manual calls/exclusion/navigation and Save stay visible, and
 less-used controls move into More actions / Advanced. Numeric entry shows two
 decimals. Spatial display numbers map to persistent mask IDs in every export.
 Earlier analyses retain their
-stored protocols until explicitly switched. Owner inspection of the native UI is
+stored protocols until explicitly switched. The owner approved the native layout
+and authorized packaging. Owner acceptance of the packaged build remains
 pending; no stable v0.7 tag or publication is approved.
 
 Dev6 checks: **179 tests passed**, Ruff and whitespace checks passed. The native
@@ -56,13 +58,28 @@ At 1.8x, calls are negative-folder 59/299, positive-folder 666/810 and small-fol
 The native slider/save/reopen check passed without SAM; four warm updates on a
 1040x1392 field had median 0.562s including debounce and rendering. See the
 [local desktop screenshot](../validation/local/pnc-discrimination/v070-dev5/desktop-enrichment-ui.png).
-No new installer has been built; the packaged preview remains dev2.
+The dev6 Windows preview is now packaged from clean source
+`0510328f5ce8df2f1a1f2267556ea82bfb09717f`:
+[PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe](../dist/preview/0.7.0.dev6/PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe).
+Size: 69,879,076 bytes. SHA-256:
+`ae2927b845611844ce0b4fb6fc73d8976e2b969f5e75d9bd5595a695dd298b24`.
+The updated README, changelog and install/review guides are bundled.
+All 180 source tests and Ruff pass. Actual isolated installation, public ND2
+analysis/export (watershed functional backend), installed enrichment slider,
+immutable save/reopen and uninstall pass. Review calls at 1.2x/1.8x/2.5x remain
+69/65/58 out of 74 with fixed masks and no SAM rerun. All 34 application Python
+files match the wheel, and five earlier preview assets are hash-unchanged.
+See the [packaged verification summary](../dist/preview/0.7.0.dev6/verification.json).
+This was the existing Windows development machine; a separate clean-machine
+test and a fresh SAM-engine setup were not repeated for this build. No release
+has been pushed, tagged or published.
 
 ## Progress table
 
 | Work | Status | Result | What remains |
 | --- | --- | --- | --- |
-| Native side-panel redesign and spatial numbering | Done locally in dev6; owner testing pending | Owner selected Side panel mockup. Native review exposes threshold, calls, exclusion, navigation and Save; display-number mapping preserves mask IDs. 179 tests, Ruff and saved-field slider/save/reopen pass. | Owner testing; no release/package authorized. |
+| Current Windows preview package | Done locally; owner packaged testing pending | dev6 setup, checksum/provenance and current docs available. Installation, ND2 export, installed slider/save/reopen and uninstall pass. | Owner testing of the installer; separate clean-machine/fresh engine check before stable release. |
+| Native side-panel redesign and spatial numbering | Owner layout review approved; packaged testing pending | Owner selected Side panel mockup and approved native UI follow-ups. Fixed controls, spatial numbers, auto-fit and larger buttons are in dev6. | Owner testing of the packaged build; final release approval remains pending. |
 | Stable Python app and Windows release | Done | v0.6.0 remains the public download. | Preserve stable behavior while research continues. |
 | Preview workflow, consistent projections, live slider and saved revisions | Done | dev2 installer passed installation, ND2 export and review checks; 152 tests passed. | Owner testing; these checks establish functionality, not biological accuracy. |
 | Training-free detector comparison and loss audit | Done; proposed replacements rejected | dev4 research passed 163 tests and Ruff. Tested enrichment/mixture operating points did not satisfy the separation/preservation proxy. | Retain legacy defaults. See the [versioned comparison](v070-enrichment-exploration.md). |
