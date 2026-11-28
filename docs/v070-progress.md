@@ -6,9 +6,9 @@ its detector is ready for adoption.**
 
 Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev2**.
 Latest measured research source: **0.7.0.dev4**, commit
-`009f985be87061b7ce045f92adc438e0bde3744b` (5B; documentation-only
-changes since step 4, with unchanged application algorithms). Both sides of the
-guard comparison use app version **0.7.0.dev4**; rendering revisions are separate.
+`6adb2e6a14de7b89923345e69bc79f9018fb2af4` (step 6; documentation-only
+changes since step 4, with unchanged application algorithms). All frozen-method
+comparisons use app version **0.7.0.dev4**; rendering revisions are separate.
 No improved biological accuracy has been demonstrated. Final v0.7 publication
 requires the owner's local testing and explicit approval.
 
@@ -32,9 +32,9 @@ requires the owner's local testing and explicit approval.
 | Step 5B: one expanded-guard comparison | Done; useful mixed result | SAG5B-dev4-r1-20261128: reference guard 8 to 12 sigma only; positive anchor prior-footprint fit weight 15.70% to 2.63%. All 29 probe component outcomes unchanged; five original supported no-spot probes remain empty. | Nearby-focus contamination persists; curved central-background RMSE worsens 6.453 to 7.772; unconfirmed small anchor stays below cutoff, hot pixel still passes. Three boundary probes remain indeterminate. No second guard tried. |
 | Owner biological review of small IMG9/n23 locations A/B/C | Done; provisional qualitative review | At raw display 688–1668 without smoothing, none was accepted as convincing PNC; the owner requires substantially brighter enrichment. | This is not an exhaustive negative annotation of the nucleus/image/folder, and supplies no numerical brightness threshold. Preserve historical measurements; do not rescue these locations by threshold changes. |
 | Owner-confirmed clearly positive target | Done; indicated location confirmed | Owner answered "yes P is" for P, positive IMG1/n74, crop X69/Y75. P is the original fixed LPN4/SAG5 positive anchor. | Confirmation covers the indicated location, not an exact boundary, other candidates or the folder. A/B/C remain provisionally nonconvincing. |
-| Step 6: frozen-method comparison of reviewed P/A/B/C | In progress | RPC6-dev4-r1-20261128: reuse saved P/A outcomes; measure only B/C with the already frozen LPN4/SAG5 configurations. | Report per-stage candidates, reference/background/enrichment, variation-width scores, raw support, fixed decisions and adequacy flags. No fitting a brightness threshold or parameter search. |
+| Step 6: frozen-method comparison of reviewed P/A/B/C | Done; diagnostic only | RPC6-dev4-r1-20261128: P passes every frozen stage; A passes none. Whole-nucleus-width stages reject B/C; existing local-width stages accept B/C despite their nonconvincing review. P/A saved outcomes reused; only four B/C fits and ten evidence calls added. | Statistical detectability alone does not establish PNC identity. Review the separation/tradeoff before broader work; no threshold fitted or product detector adopted. |
 | Biological identification and detector adoption | Pending | One owner-confirmed P location and three provisionally nonconvincing A/B/C locations now provide a bounded qualitative comparison; no product detector adopted. | Structured-reference variation and plane adequacy remain unresolved; four reviewed points do not establish accuracy, a general cutoff or independent validation. |
-| Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review step 5 before expanding candidate generation, adding rejection rules or measuring validation again. |
+| Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review steps 5/6 before expanding candidate generation, adding rejection rules or measuring validation again. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
 ## Checkpoint 5: completed; review pending
@@ -104,7 +104,7 @@ assets or files included in the Git repository.
 | Guard comparison step 5B | SAG5B-dev4-r1-20261128; app dev4 before/after, render 2; clean measurement HEAD 009f985be87061b7ce045f92adc438e0bde3744b | [One-guard comparison](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-b-v2.html) |
 | Owner biological review of A/B/C | Qualitative review revision 2; source dev4 unchanged; informational steering after step 5 | [Reviewed raw image](../validation/local/pnc-discrimination/small-anchor-owner-review/small-example-ABC.png), [verbatim feedback and provenance](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review-v2.json) |
 | Owner confirmation of P | Confirmation revision 2; source dev4 unchanged | [Confirmed review report](../validation/local/pnc-discrimination/positive-reference-owner-review/report-v2.html), [verbatim confirmation and provenance](../validation/local/pnc-discrimination/positive-reference-owner-review/owner-confirmation-v2.json) |
-| Reviewed points step 6 | RPC6-dev4-r1-20261128; in progress | Pending |
+| Reviewed points step 6 | RPC6-dev4-r1-20261128; app dev4 before/after, render 1; clean measurement HEAD 6adb2e6a14de7b89923345e69bc79f9018fb2af4 | [Frozen P/A/B/C comparison](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/report.html) |
 
 ### Owner biological review: small IMG9/n23
 
@@ -178,14 +178,100 @@ remain preserved. The older [descriptive review](../validation/local/pnc-discrim
 and original pending-review rendering retain their historical wording; the
 revision-2 confirmation supplies the current biological status.
 
-The authorized bounded next checkpoint compares only these four fixed locations
+The completed bounded checkpoint compared only these four fixed locations
 using existing frozen configurations: original LPN4 guard 8–20 sigma and the
 already recorded SAG5 guard 12–20 comparator; the evaluation core remains
-8 sigma. P/A fits and decisions are reused from saved results. Only B/C require
+8 sigma. P/A fits and decisions were reused from saved results. Only B/C received
 new fits and probe decisions with the identical existing functions/constants.
 Candidate coordinates, indication-point overlap and raw support remain distinct
 from a biological object mask. No new guard, model, threshold, training, broader
-field run or validation measurement is authorized by this checkpoint.
+field run or validation measurement was performed. Confirmation revision-2 SHA256:
+`a013ba9b808f233ebe3264eae857f58e126b20557ebc7b67300e0b6242a4ade2`;
+the reviewed P-image SHA256 is
+`a8032ec985b123bfb4c62ee1de89580be20d6091a52fc96fee909dd50d9568f5`.
+
+### Step 6: reviewed points under frozen rules
+
+**RPC6-dev4-r1-20261128 is complete; product adoption remains pending.** Before:
+saved P/A numerical outcomes from LPN4/SAG5, app **0.7.0.dev4**. After: those
+same outcomes interpreted with owner review, plus the first frozen B/C
+measurements, still **0.7.0.dev4**. There are no historical B/C detector results
+against which to claim a temporal improvement. Locations, labels and the two
+existing reference geometries were fixed before the new measurements; no
+configuration was selected from these outcomes.
+
+| Point | Owner review | Descriptive median enrichment | B0 / whole width | Plane 8 / whole width | Plane 8 / local width | Plane 12 / frozen width 8 | Plane 12 / local width |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| P, X69/Y75 | Confirmed PNC-positive location | 4.31696x | Pass | Pass | Pass | Pass | Pass |
+| A, X74/Y76 | Provisionally nonconvincing at shown brightness | 1.01112x | No seed | No seed | No seed | No seed | No seed |
+| B, X50/Y59 | Provisionally nonconvincing at shown brightness | 1.15344x | No seed | No seed | Pass | Pass | Pass |
+| C, X51/Y78 | Provisionally nonconvincing at shown brightness | 1.12949x | No seed | No seed | Pass | Pass | Pass |
+
+Pass means the existing numerical probe rule produced accepted support containing
+the indicated pixel, not a new biological or manual app call. No seed identifies
+the first rejection stage. All 20 stage outcomes, candidate coordinates/offsets,
+reference/background values, fixed cutoffs and flags are in the private report.
+The whole-width stages already separate these four reviewed locations; they are
+probe adaptations of earlier G diagnostics, not complete product detector runs.
+Prior faint-synthetic failures with whole-nucleus width remain relevant, so this
+four-point result does not establish a generally preferable detector.
+
+At the original plane-8 geometry, changing only the already defined width rule
+from whole-nucleus to local reference variation yields:
+
+| Point | Fitted background at point | Filtered excess | Whole / local width | Point score in whole / local width units | Local seed cutoff | Raw neighbors above 3x reference MAD |
+| --- | --- | --- | --- | --- | --- | --- |
+| P | 3867.04 | 11207.78 | 282.31 / 223.81 | 39.68 / 50.05 | 1125.09 | 8/8 |
+| A | 1430.09 | 40.02 | 106.93 / 13.86 | 0.27 / 2.07 | 80.68 | 0/8 |
+| B | 1326.59 | 233.57 | 106.93 / 15.13 | 2.08 / 14.69 | 87.02 | 8/8 |
+| C | 1370.23 | 187.41 | 106.93 / 12.53 | 1.65 / 14.05 | 74.04 | 7/8 |
+
+Scores are `(filtered excess - frozen original center) / width`, not calibrated
+SNR, probability or biological confidence. B/C pass the unchanged 5-width seed
+and 3-width localization tests despite only modest descriptive enrichment. They
+also have spatially supported raw excess; raw-neighbor support alone does not
+separate them from P. Under plane 8/local width, P/B/C have 177/89/74 filtered
+support pixels, clipped to the fixed 177-pixel evaluation core. These are not true
+object boundaries. B has two accepted seeds in one connected region, the closest
+one pixel from its indicated location; C's seed is at its indicated point.
+
+All four locations pass the existing reference-support/rank/conditioning checks;
+none becomes indeterminate. The raw reference MADs for plane 8 are
+737.79/45.68/49.87/41.31 for P/A/B/C. These remain reference variation, not verified
+instrument noise. P's structured reference and radius/residual correlation
+(-0.703 at guard 8, -0.501 at guard 12) leave background adequacy unresolved.
+Changing to the existing guard-12 comparator retains B/C evidence; it does not
+establish the owner's biological distinction.
+
+The [full report](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/report.html),
+[all stages CSV](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/stages.csv),
+[B stage maps](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/plots/B-maps-stages.png)
+and [P profiles/reference histograms](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/plots/P-profiles-histograms.png)
+show enrichment and statistical detectability separately. No 4x threshold or other
+new numerical rule was inferred, fitted or tested. Four qualitatively reviewed
+locations in two previously examined DEVELOPMENT nuclei do not establish
+accuracy or independent validation. A/B/C review is not an exhaustive negative
+annotation; P confirmation is not an exact boundary annotation.
+
+Checks: all ten saved P/A stage decisions are identical, saved support masks are
+reused, all 20 stage masks stay inside the unchanged core, descriptive ratios
+match bridge values exactly, and histogram counts/links pass. All **424 protected
+files** remain hash-unchanged, including prior reports/arrays, review records and
+the dev2 installer. New B8/B12/C8/C12 fit-only timings were
+3.549/3.331/3.179/3.203 ms in an existing CPU Python process. P/A timing entries are
+historical, not new measurements. These times exclude imports/loading, evidence,
+rendering, cold app/SAM preparation and warm-slider work. No product test suite
+rerun was needed for unchanged implementation.
+
+Measured clean HEAD: `6adb2e6a14de7b89923345e69bc79f9018fb2af4`; unchanged
+application source-tree Git hash: `8270e4af81e4955c21838f43c6bcecc451f37ebc`.
+Step-6 ignored experiment SHA256:
+`974f8357b659c2a0250522e6244e78345fcf6bfce79ab9248b5f90144a0e2e40`.
+The fit/evidence hashes remain those recorded for steps 4/5 below; the
+[frozen plan](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/plan.json)
+and [verification](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/verification.json)
+retain full configuration/input/protection provenance. No source, product/manual
+call, dependency or installer changes; no validation measurement/reselection.
 
 ### Checkpoint 5 before/after findings
 
@@ -237,11 +323,14 @@ evidence, rendering, cold app/SAM preparation and warm-slider latency. No produc
 suite was rerun because implementation did not change.
 
 **Current review recommendation:** do not adopt guard growth as a general
-correction or seek to rescue the reviewed A/B/C locations. P is now confirmed;
-step 6 will quantify contextual enrichment/background and assess the existing
-frozen methods at P/A/B/C only. Plane adequacy and structured-reference variation
-remain open issues. Broader adoption, threshold fitting, hot-pixel rules and
-dependency retries remain outside this bounded checkpoint.
+correction or seek to rescue the reviewed A/B/C locations. Step 6 confirms that
+local statistical evidence alone can accept owner-reviewed nonconvincing B/C;
+keep biological enrichment distinct and review the frozen-stage tradeoffs before
+broader work. The whole-width separation observed at these four points does not
+erase prior failures or validate a general cutoff. Plane adequacy and structured
+reference variation remain open issues. Stop at this completed checkpoint;
+broader adoption, threshold fitting, hot-pixel rules and dependency retries remain
+outside its scope.
 
 Step 5 algorithm provenance: application enrichment SHA256
 `2ff62e9a89f85f01748d8ed87b0f4556f0413624f7bf3138191c253e82af8b90`;
