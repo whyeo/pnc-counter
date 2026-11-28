@@ -14,17 +14,31 @@ requires the owner's local testing and explicit approval.
 
 ## Current local implementation
 
-**0.7.0.dev5 implements the owner-approved 1.8x local enrichment default.**
-The desktop review window has a direct fold-threshold slider, numeric entry,
-reset, cached live counts and reusable PNC settings. Earlier analyses retain their
+**0.7.0.dev6 retains the owner-approved 1.8x local enrichment default and implements
+the selected fixed side-panel layout in native Python/Tk.** The threshold is
+above the image, manual calls/exclusion/navigation and Save stay visible, and
+less-used controls move into More actions / Advanced. Numeric entry shows two
+decimals. Spatial display numbers map to persistent mask IDs in every export.
+Earlier analyses retain their
 stored protocols until explicitly switched. Owner inspection of the native UI is
 pending; no stable v0.7 tag or publication is approved.
+
+Dev6 checks: **179 tests passed**, Ruff and whitespace checks passed. The native
+950x650 layout test keeps threshold entry, manual calls, exclusion, navigation,
+More actions and Save visible. Spatial order, stable-ID mapping, geometry edits,
+undo and immutable save/reopen are covered. A real 1040x1392 saved-field smoke
+test passed at 1.2x / 1.8x / 2.5x with unchanged 69 / 65 / 58 positive calls out
+of 74, fixed masks and no SAM invocation. Saving/reopening also passed. Four
+warm updates had median 0.589s and p95 0.602s including debounce/rendering;
+this is a local check, not a speed improvement claim.
+See the [native dev6 window](../validation/local/pnc-discrimination/v070-dev6/native-side-panel.png)
+and [saved-field check](../validation/local/pnc-discrimination/v070-dev6/slider/slider-verification.json).
 
 The bridge completed implementation locally after the v0.7 session handoff did
 not acknowledge delivery. The latest usage guide is [README.md](../README.md);
 version history is in [CHANGELOG.md](../CHANGELOG.md).
 
-Engineering checks: **175 tests passed**, Ruff passed, and all **1,391** retained
+Previous dev5 engineering checks: **175 tests passed**, Ruff passed, and all **1,391** retained
 nucleus enrichment maxima across **37** saved fields reproduced the explorer.
 At 1.8x, calls are negative-folder 59/299, positive-folder 666/810 and small-folder
 13/282. These are exploratory call rates, not measured classification accuracy.
@@ -37,6 +51,7 @@ No new installer has been built; the packaged preview remains dev2.
 
 | Work | Status | Result | What remains |
 | --- | --- | --- | --- |
+| Native side-panel redesign and spatial numbering | Done locally in dev6; owner testing pending | Owner selected Side panel mockup. Native review exposes threshold, calls, exclusion, navigation and Save; display-number mapping preserves mask IDs. 179 tests, Ruff and saved-field slider/save/reopen pass. | Owner testing; no release/package authorized. |
 | Stable Python app and Windows release | Done | v0.6.0 remains the public download. | Preserve stable behavior while research continues. |
 | Preview workflow, consistent projections, live slider and saved revisions | Done | dev2 installer passed installation, ND2 export and review checks; 152 tests passed. | Owner testing; these checks establish functionality, not biological accuracy. |
 | Training-free detector comparison and loss audit | Done; proposed replacements rejected | dev4 research passed 163 tests and Ruff. Tested enrichment/mixture operating points did not satisfy the separation/preservation proxy. | Retain legacy defaults. See the [versioned comparison](v070-enrichment-exploration.md). |
@@ -60,7 +75,7 @@ No new installer has been built; the packaged preview remains dev2.
 | Local enrichment default | Approved and implemented locally | dev5 new settings use the raw3x3/ring descriptor at 1.8x. Historical saved protocols remain reproducible. | Owner UI testing; broader biological accuracy remains unmeasured. |
 | Full-field app integration | Done locally | 1,391 nucleus maxima and automatic calls reproduce NE8 at 1.8x; CLI, review revisions and exports include the new protocol. | Human review and local acceptance; all previously examined fields remain exploratory. |
 | Native threshold interface | Ready for owner testing | Direct fold slider, numeric entry, reset1.8x, live counts/overlays and Use for next analysis. Source UI open locally. | Owner feedback before packaging/finalization. |
-| Latest-revision README and changelog | Done | README describes dev5 usage only; history remains in separate CHANGELOG.md. | Keep documentation aligned with later changes. |
+| Latest-revision README and changelog | Done | README describes dev6 usage only; history remains in separate CHANGELOG.md. | Keep documentation aligned with later changes. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
 ## Interactive owner review and descriptive comparison: complete

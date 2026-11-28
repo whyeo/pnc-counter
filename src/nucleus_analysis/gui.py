@@ -95,8 +95,7 @@ class CounterApp:
         actions = ttk.Frame(frame)
         actions.grid(row=3, column=0, sticky="ew", pady=10)
         for label, command in [("Analyze images", self.start), ("Check channels", self.check_channels),
-                               ("Adjust PNC threshold", self.review_selected),
-                               ("Review / correct selected", self.review_selected), ("Open results folder", self.open_results)]:
+                               ("Review results", self.review_selected), ("Open results folder", self.open_results)]:
             self._button(actions, label, command).pack(side="left", padx=(0, 6))
         self.cancel_button = ttk.Button(actions, text="Stop after this image", command=self.cancel.set, state="disabled")
         self.cancel_button.pack(side="right")

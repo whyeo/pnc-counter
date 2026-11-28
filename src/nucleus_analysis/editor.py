@@ -77,160 +77,51 @@ class ReviewEditor:
         self.display_contrast = None
         self.inspection_plane = None
         self.inspection_z = None
-        self.window = tk.Toplevel(parent)
-        from . import __version__
+        self.parent = parent
+        from .review_layout import build_review_layout
 
-        self.window.title(f"PNC Counter {__version__} - Review nuclei")
-        self.window.geometry("1180x820")
-        self.window.minsize(950, 650)
-        self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.window.columnconfigure(0, weight=1)
-        self.window.rowconfigure(2, weight=1)
-        self.buttons = []
-        toolbar = ttk.Frame(self.window, padding=8)
-        toolbar.grid(row=0, column=0, columnspan=2, sticky="ew")
-        self.tool = tk.StringVar(value="Select")
-        self.channel = tk.StringVar(value="DAPI + PNC")
-        self.show_masks = tk.BooleanVar(value=True)
-        self.show_ids = tk.BooleanVar(value=True)
-        for name in ("Select", "Add", "Redraw", "Split"):
-            button = ttk.Radiobutton(toolbar, text=name, variable=self.tool, value=name,
-                                     command=self.change_tool)
-            button.pack(side="left", padx=3)
-            self.buttons.append(button)
-        self.button(toolbar, "Finish outline (Enter)", self.finish_outline).pack(side="left", padx=10)
-        self.button(toolbar, "Cancel outline (Esc)", self.cancel_outline).pack(side="left")
-        channels = ttk.Combobox(toolbar, values=("DAPI", "PNC", "DAPI + PNC", "PNC threshold"),
-                                 textvariable=self.channel, state="readonly", width=16)
-        channels.pack(side="right", padx=6)
-        channels.bind("<<ComboboxSelected>>", lambda _e: self.render())
-        self.stats = tk.StringVar()
-        ttk.Label(self.window, textvariable=self.stats, padding=(10, 3), font=("TkDefaultFont", 11, "bold")).grid(
-            row=1, column=0, columnspan=2, sticky="w")
-        image_frame = ttk.Frame(self.window)
-        image_frame.grid(row=2, column=0, sticky="nsew")
-        image_frame.columnconfigure(0, weight=1)
-        image_frame.rowconfigure(0, weight=1)
-        self.canvas = tk.Canvas(image_frame, background="#171b24", highlightthickness=0)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        horizontal = ttk.Scrollbar(image_frame, orient="horizontal", command=self.canvas.xview)
-        vertical = ttk.Scrollbar(image_frame, orient="vertical", command=self.canvas.yview)
-        horizontal.grid(row=1, column=0, sticky="ew")
-        vertical.grid(row=0, column=1, sticky="ns")
-        self.canvas.configure(xscrollcommand=horizontal.set, yscrollcommand=vertical.set)
-        self.canvas.bind("<Button-1>", self.click)
-        self.canvas.bind("<B1-Motion>", self.drag)
-        self.canvas.bind("<Button-3>", self.remove_vertex)
-        self.canvas.bind("<MouseWheel>", self.wheel)
-        self.canvas.bind("<Button-4>", lambda e: self.zoom(1.25, e))
-        self.canvas.bind("<Button-5>", lambda e: self.zoom(0.8, e))
-        self.canvas.bind("<ButtonPress-2>", lambda e: self.canvas.scan_mark(e.x, e.y))
-        self.canvas.bind("<B2-Motion>", lambda e: self.canvas.scan_dragto(e.x, e.y, gain=1))
-        sidebar_shell = ttk.Frame(self.window)
-        sidebar_shell.grid(row=2, column=1, sticky="ns")
-        sidebar_shell.rowconfigure(0, weight=1)
-        side_canvas = tk.Canvas(sidebar_shell, width=265, highlightthickness=0)
-        side_canvas.grid(row=0, column=0, sticky="ns")
-        side_scroll = ttk.Scrollbar(sidebar_shell, orient="vertical", command=side_canvas.yview)
-        side_scroll.grid(row=0, column=1, sticky="ns")
-        side_canvas.configure(yscrollcommand=side_scroll.set)
-        sidebar = ttk.Frame(side_canvas, padding=8)
-        side_window = side_canvas.create_window(0, 0, window=sidebar, anchor="nw")
-        sidebar.bind("<Configure>", lambda _e: side_canvas.configure(scrollregion=side_canvas.bbox("all")))
-        side_canvas.bind("<Configure>", lambda e: side_canvas.itemconfigure(side_window, width=e.width))
-        tuning = ttk.LabelFrame(sidebar, text="PNC threshold", padding=6)
-        tuning.pack(fill="x", pady=(0, 8))
-        self.pnc_method = tk.StringVar(value=next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
-        method = ttk.Combobox(tuning, textvariable=self.pnc_method, values=tuple(PNC_METHODS), state="readonly", width=27)
-        self.pnc_method_box = method
-        method.pack(fill="x")
-        method.bind("<<ComboboxSelected>>", self.schedule_pnc_preview)
-        self.pnc_sensitivity = tk.DoubleVar(value=self.session.config.pnc_sensitivity)
-        self.pnc_enrichment = tk.DoubleVar(value=self.session.config.pnc_enrichment_threshold)
-        self.pnc_slider = ttk.Scale(tuning, from_=0, to=100, variable=self.pnc_sensitivity,
-                                    command=self.schedule_pnc_preview)
-        self.pnc_slider.pack(fill="x", pady=5)
-        self.pnc_direction = tk.StringVar()
-        ttk.Label(tuning, textvariable=self.pnc_direction).pack(fill="x")
-        self.enrichment_controls = ttk.Frame(tuning)
-        self.enrichment_controls.pack(fill="x", pady=3)
-        ttk.Label(self.enrichment_controls, text="Local enrichment threshold").pack(anchor="w")
-        number_row = ttk.Frame(self.enrichment_controls)
-        number_row.pack(fill="x")
-        self.enrichment_entry = ttk.Spinbox(number_row, from_=0.1, to=20, increment=.05,
-            textvariable=self.pnc_enrichment, width=7, command=self.schedule_pnc_preview)
-        self.enrichment_entry.pack(side="left")
-        ttk.Label(number_row, text=" x local background").pack(side="left")
-        self.enrichment_entry.bind("<Return>", self.schedule_pnc_preview)
-        self.enrichment_entry.bind("<FocusOut>", self.schedule_pnc_preview)
-        self.button(self.enrichment_controls, "Reset to 1.8x", self.reset_enrichment).pack(fill="x", pady=3)
-        self.pnc_readout = tk.StringVar()
-        self.pnc_readout_label = ttk.Label(tuning, textvariable=self.pnc_readout, wraplength=225)
-        self.pnc_readout_label.pack(fill="x", pady=4)
-        ttk.Label(tuning, text="Preview uses saved nuclei. Save a new revision to keep these calls. Manual calls are retained.",
-                  wraplength=225).pack(fill="x")
-        self.evidence_readout = tk.StringVar()
-        ttk.Label(tuning, textvariable=self.evidence_readout, wraplength=225).pack(fill="x", pady=4)
-        self.z_controls = ttk.Frame(tuning)
-        self.z_controls.pack(fill="x")
-        self.button(self.z_controls, "Load Z evidence from source", self.load_z_evidence).pack(fill="x")
-        self.button(self.z_controls, "Inspect candidate Z plane", self.inspect_z_plane).pack(fill="x")
-        self.button(self.z_controls, "Return to maximum projection", self.return_projection).pack(fill="x")
-        if on_protocol:
-            self.button(tuning, "Use for next analysis", self.use_pnc_protocol).pack(fill="x", pady=4)
-        ttk.Label(sidebar, text="Select nuclei (Ctrl+click for multiple)", wraplength=225).pack(anchor="w")
-        self.queue_filter = tk.StringVar(value="all")
-        queue_filter = ttk.Combobox(sidebar, textvariable=self.queue_filter,
-                                    values=("all", "unreviewed", "uncertain", "flagged", "rejected"),
-                                    state="readonly", width=25)
-        queue_filter.pack(fill="x", pady=3)
-        queue_filter.bind("<<ComboboxSelected>>", lambda _e: self.refresh())
-        self.button(sidebar, "Next in review queue", self.next_in_queue).pack(fill="x")
-        self.listbox = tk.Listbox(sidebar, width=30, height=6, selectmode="extended", exportselection=False)
-        self.listbox.pack(fill="x", pady=6)
-        self.listbox.bind("<<ListboxSelect>>", self.select_list)
-        self.list_ids = []
-        self.detail = tk.StringVar(value="Select a nucleus to inspect its pixels and review state.")
-        ttk.Label(sidebar, textvariable=self.detail, wraplength=225).pack(fill="x", pady=5)
-        for label, command in (
-            ("Reject / exclude", lambda: self.mark(rejected=True)),
-            ("Accept / restore", lambda: self.mark(rejected=False)),
-            ("Flag for follow-up", lambda: self.mark(flagged=True)),
-            ("Clear flag", lambda: self.mark(flagged=False)),
-            ("Confirm geometry + PNC", lambda: self.mark(reviewed=True)),
-            ("Reviewer / note / PNC call", self.edit_details),
-            ("Add verified reference", self.add_reference),
-            ("Delete selected", self.delete), ("Merge selected", self.merge),
-            ("Undo (Ctrl+Z)", self.undo), ("Redo (Ctrl+Y)", self.redo),
-            ("Reset to original", self.reset), ("Save new revision", self.save),
-        ):
-            self.button(sidebar, label, command).pack(fill="x", pady=2)
-        controls = ttk.Frame(self.window, padding=(8, 3))
-        controls.grid(row=3, column=0, columnspan=2, sticky="ew")
-        self.button(controls, "Zoom +", lambda: self.zoom(1.25)).pack(side="left")
-        self.button(controls, "Zoom -", lambda: self.zoom(0.8)).pack(side="left", padx=4)
-        self.button(controls, "Fit image", self.fit).pack(side="left")
-        self.button(controls, "Marker display range", self.set_display_range).pack(side="left", padx=4)
-        ttk.Checkbutton(controls, text="Show masks", variable=self.show_masks, command=self.render).pack(side="left", padx=10)
-        ttk.Checkbutton(controls, text="Show IDs", variable=self.show_ids, command=self.render).pack(side="left")
-        self.status = tk.StringVar(value=self.session.warning or
-            "Select: click nucleus. Outline: click vertices or drag freehand, then Enter. Wheel: zoom; middle drag: pan.")
-        ttk.Label(self.window, textvariable=self.status, padding=8, wraplength=1100).grid(
-            row=4, column=0, columnspan=2, sticky="ew")
-        self.window.bind("<Return>", lambda _e: self.finish_outline())
-        self.window.bind("<Escape>", lambda _e: self.cancel_outline())
-        self.window.bind("<Control-z>", lambda _e: self.undo())
-        self.window.bind("<Control-y>", lambda _e: self.redo())
-        self.window.bind("<Control-s>", lambda _e: self.save())
+        build_review_layout(self, PNC_METHODS)
         h, w = self.session.shape
         self.scale = min(1.0, 850 / w, 650 / h)
         self.refresh()
         self._poll_id = self.window.after(100, self.poll)
 
-    def button(self, parent, text, command):
-        widget = ttk.Button(parent, text=text, command=command)
+    def button(self, parent, text, command, **kwargs):
+        widget = ttk.Button(parent, text=text, command=command, style="Review.TButton", **kwargs)
         self.buttons.append(widget)
         return widget
+
+    def show_advanced(self):
+        self.advanced_window.deiconify()
+        self.advanced_window.lift()
+
+    def show_more_actions(self):
+        if not self.busy:
+            try:
+                self.more_menu.tk_popup(self.more_button.winfo_rootx(),
+                                        self.more_button.winfo_rooty() + self.more_button.winfo_height())
+            finally:
+                self.more_menu.grab_release()
+
+    def set_tool(self, mode):
+        if not self.busy:
+            self.tool.set(mode)
+            self.change_tool()
+
+    def apply_manual_call(self):
+        self.mark(pnc_override={"automatic": None, "positive": True, "negative": False}[self.manual_call.get()])
+
+    def toggle_exclusion(self):
+        restore = bool(self.selected) and all(self.session.masks[i].rejected for i in self.selected)
+        self.mark(rejected=not restore)
+
+    def check_and_next(self):
+        def operation():
+            self.session.mark(sorted(self.selected), reviewed=True)
+        previous = len(self.session.history)
+        self.action(operation)
+        if len(self.session.history) > previous:
+            self.next_in_queue()
 
     def set_display_range(self):
         value = simpledialog.askstring("Marker display contrast", "Raw minimum, maximum (blank = auto). Display only.",
@@ -323,6 +214,7 @@ class ReviewEditor:
     def schedule_pnc_preview(self, _value=None):
         if self._syncing_pnc:
             return
+        self.pnc_enrichment_text.set(f"{self.pnc_enrichment.get():.2f}")
         if self.points:
             self.status.set("Finish or cancel the outline before changing PNC settings.")
             return
@@ -331,22 +223,38 @@ class ReviewEditor:
             self.window.after_cancel(self._pnc_after)
         self._pnc_after = self.window.after(180, self.launch_pnc_preview)
 
+    def apply_enrichment_entry(self, _event=None):
+        try:
+            value = float(self.pnc_enrichment_text.get())
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError
+        except ValueError:
+            self.status.set("Enter a positive local enrichment threshold, such as 1.80.")
+            return "break"
+        self.pnc_enrichment.set(round(value, 2))
+        self.schedule_pnc_preview()
+        return "break"
+
     def reset_enrichment(self):
         self.pnc_enrichment.set(1.8)
         self.schedule_pnc_preview()
 
     def configure_pnc_controls(self, config):
+        self.pnc_enrichment_text.set(f"{config.pnc_enrichment_threshold:.2f}")
         enrichment = config.pnc_mode == "enrichment"
         adaptive = config.pnc_mode in ("adaptive", "prominence")
         if enrichment:
             self.pnc_slider.configure(from_=min(1., config.pnc_enrichment_threshold),
                 to=max(5., config.pnc_enrichment_threshold), variable=self.pnc_enrichment, state="normal")
-            if not self.enrichment_controls.winfo_manager():
-                self.enrichment_controls.pack(fill="x", pady=3, before=self.pnc_readout_label)
+            self.enrichment_controls.grid()
+            self.pnc_readout_label.grid_remove()
+            self.threshold_title.set("PNC threshold")
             self.pnc_direction.set("More sensitive                    Stricter")
             self.pnc_readout.set(f"Local enrichment threshold: {config.pnc_enrichment_threshold:.2f}x")
         else:
-            self.enrichment_controls.pack_forget()
+            self.enrichment_controls.grid_remove()
+            self.pnc_readout_label.grid(row=0, column=2, rowspan=2, padx=8)
+            self.threshold_title.set("PNC sensitivity" if adaptive else "PNC method")
             self.pnc_slider.configure(from_=0, to=100, variable=self.pnc_sensitivity,
                                       state="normal" if adaptive else "disabled")
             self.pnc_direction.set("Stricter                 More sensitive")
@@ -455,7 +363,14 @@ class ReviewEditor:
                         "Redraw": "Select one nucleus first, then outline its replacement boundary and press Enter.",
                         "Split": "Select one nucleus first; outline ONE part, then Enter. The remaining pixels become the other nucleus."}
         self.status.set(descriptions[self.tool.get()])
+        self.update_outline_controls()
         self.draw_outline()
+
+    def update_outline_controls(self):
+        if self.tool.get() == "Select":
+            self.outline_controls.grid_remove()
+        else:
+            self.outline_controls.grid(row=1, column=0, columnspan=2, sticky="ew")
 
     def finish_outline(self):
         if self.busy or self.tool.get() == "Select":
@@ -483,6 +398,7 @@ class ReviewEditor:
             self.points.clear()
             self.tool_target = None
             self.tool.set("Select")
+            self.update_outline_controls()
             self.draw_outline()
 
     def action(self, operation):
@@ -519,6 +435,8 @@ class ReviewEditor:
         self.action(self.session.reset)
 
     def refresh(self):
+        self.display_numbers = self.session.display_numbers
+        self.update_outline_controls()
         self._syncing_pnc = True
         self.pnc_method.set(next(k for k, v in PNC_METHODS.items() if v == self.session.config.pnc_mode))
         self.pnc_sensitivity.set(self.session.config.pnc_sensitivity)
@@ -534,23 +452,31 @@ class ReviewEditor:
         self._syncing_pnc = False
         counts, details = self.session.counts()
         percent = f"{counts['percentage']:.2f}%" if counts["percentage"] is not None else "N/A"
-        self.stats.set(f"PNC+ {counts['n_positive']} / {counts['n_total']} ({percent})   "
-                       f"Rejected: {counts['n_bad']}   Flagged: {counts['n_flagged']}   "
-                       f"Mode: {self.session.config.pnc_mode}   "
-                       f"{'Unsaved changes' if self.session.dirty else 'Saved/original'}")
+        self.stats.set(f"PNC+ {counts['n_positive']} / {counts['n_total']} ({percent})")
+        self.save_state.set("Unsaved review" if self.session.dirty else "Saved / original analysis")
+        self.review_progress.set(f"{sum(m.reviewed for m in self.session.masks.values())} / {len(self.session.masks)} checked"
+                                 f"  ·  {counts['n_bad']} excluded")
         self.listbox.delete(0, "end")
         queue = self.session.review_queue(self.queue_filter.get())
-        self.list_ids = [row["MaskID"] for row in queue]
+        self.list_ids = sorted((row["MaskID"] for row in queue), key=self.display_numbers.__getitem__)
         for index, identifier in enumerate(self.list_ids):
             mask = self.session.masks[identifier]
             state = "excluded" if details[identifier]["rejected"] else "PNC+" if details[identifier]["positive"] else "PNC-"
-            self.listbox.insert("end", f"{identifier}: {state}{' [flag]' if mask.flagged else ''}{' [done]' if mask.reviewed else ''}")
+            self.listbox.insert("end", f"{self.display_numbers[identifier]}: {state}{' [flag]' if mask.flagged else ''}{' [done]' if mask.reviewed else ''}")
             if identifier in self.selected:
                 self.listbox.selection_set(index)
         if len(self.selected) == 1:
             identifier = next(iter(self.selected))
             mask = self.session.masks[identifier]
-            self.detail.set(f"Nucleus {identifier}\nArea: {len(mask.pixels)} px\n"
+            call = "automatic" if mask.pnc_override is None else "positive" if mask.pnc_override else "negative"
+            self.manual_call.set(call)
+            score = (f" · {details[identifier]['enrichment']:.2f}×" if "enrichment" in details[identifier] else "")
+            self.selection_summary.set(f"Nucleus {self.display_numbers[identifier]}{score}\n"
+                f"{'Automatic' if mask.pnc_override is None else 'Manual'} {'PNC+' if details[identifier]['positive'] else 'PNC−'}"
+                + (" · Excluded" if details[identifier]['rejected'] else "")
+                + ("\nFlagged for follow-up" if mask.flagged else ""))
+            self.exclude_label.set("Restore nucleus" if mask.rejected else "Exclude nucleus")
+            self.detail.set(f"Nucleus {self.display_numbers[identifier]} (internal mask ID {identifier})\nArea: {len(mask.pixels)} px\n"
                             f"Positive PNC pixels: {details[identifier]['positive_pixels']}\n"
                             f"PNC spots: {details[identifier]['spots']}\n"
                             + (f"Local enrichment: {details[identifier]['enrichment']:.2f}x\n"
@@ -563,6 +489,10 @@ class ReviewEditor:
                             + "\n".join(next((r["reasons"] for r in self.session.review_queue("all")
                                                if r["MaskID"] == identifier), [])))
         else:
+            self.selection_summary.set("Select a nucleus" if not self.selected else f"{len(self.selected)} nuclei selected")
+            self.manual_call.set("")
+            restore = self.selected and all(self.session.masks[i].rejected for i in self.selected)
+            self.exclude_label.set("Restore selected" if restore else "Exclude selected" if self.selected else "Exclude nucleus")
             self.detail.set(f"{len(self.selected)} nuclei selected. Ctrl+click to select multiple.\n"
                             "Green = selected; yellow = flagged; gray = rejected.")
         self.render()
@@ -574,16 +504,16 @@ class ReviewEditor:
                 self.selected = chosen
                 self.refresh()
 
-    def next_in_queue(self):
+    def next_in_queue(self, step=1):
         if self.busy or self.points:
             return
         queue = self.session.review_queue(self.queue_filter.get())
         if not queue:
             self.status.set("No nuclei in this review queue.")
             return
-        ids = [row["MaskID"] for row in queue]
+        ids = sorted((row["MaskID"] for row in queue), key=self.display_numbers.__getitem__)
         current = next(iter(self.selected)) if len(self.selected) == 1 else None
-        identifier = ids[(ids.index(current) + 1) % len(ids)] if current in ids else ids[0]
+        identifier = ids[(ids.index(current) + step) % len(ids)] if current in ids else ids[0]
         self.selected = {identifier}
         self.scale = max(1, self.scale)
         self.refresh()
@@ -599,7 +529,7 @@ class ReviewEditor:
         identifier = next(iter(self.selected))
         mask = self.session.masks[identifier]
         dialog = tk.Toplevel(self.window)
-        dialog.title(f"Review details - nucleus {identifier}")
+        dialog.title(f"Review details - nucleus {self.display_numbers[identifier]}")
         dialog.transient(self.window)
         dialog.grab_set()
         reviewer = tk.StringVar(value=self.session.reviewer)
@@ -681,7 +611,7 @@ class ReviewEditor:
             for identifier, mask in self.session.masks.items():
                 yy, xx = np.unravel_index(mask.pixels, self.session.shape)
                 self.canvas.create_text(float(xx.mean()) * self.scale, float(yy.mean()) * self.scale,
-                                         text=str(identifier), fill="white", tags="ids")
+                                         text=str(self.display_numbers[identifier]), fill="white", tags="ids")
         self.draw_outline()
 
     def draw_outline(self):

@@ -17,6 +17,7 @@ from .adaptive_pnc import prepare_adaptive, select_adaptive
 from .config import AnalysisConfig
 from .imaging import Projections
 from .local_enrichment import prepare_local_enrichment, select_local_enrichment
+from .numbering import spatial_numbering
 from .output import export_result, write_csv
 from .phenotype import (
     assign_spots,
@@ -105,6 +106,16 @@ class ReviewSession:
     @property
     def shape(self):
         return self.projections.dapi_max.shape
+
+    @property
+    def display_numbers(self):
+        rows = []
+        for identifier, mask in self.masks.items():
+            yy, xx = np.unravel_index(mask.pixels, self.shape)
+            rows.append({"MaskID": identifier, "Area": len(mask.pixels),
+                         "CentroidX": float(xx.mean() + 1), "CentroidY": float(yy.mean() + 1)})
+        mapping, _ = spatial_numbering(rows)
+        return {row["MaskID"]: row["DisplayNumber"] for row in mapping}
 
     @property
     def dirty(self):

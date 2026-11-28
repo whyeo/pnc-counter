@@ -1,14 +1,14 @@
 # Correcting and reviewing nuclei
 
-Process images normally, select a completed result, and click **Review / correct
-selected**. Double-clicking a result opens the same window. To continue a saved
+Process images normally, select a completed result, and click **Review results**.
+Double-clicking a result opens the same window. To continue a saved
 review, use **Open saved analysis** and select that revision's `analysis.json`.
 Review uses the saved projections and thresholds; SAM, its checkpoint, and the
 original ND2/TIFF files are not required.
 
 ## Selection and drawing
 
-Click a nucleus or select its ID in the sidebar. Ctrl+click selects several for
+Click a nucleus or select its display number in the fixed sidebar. Ctrl+click selects several for
 merge, reject, delete, or flag operations. Green boundaries show selection;
 yellow boundaries show flags. Accepted nuclei are blue (PNC+) or pink (PNC-),
 and rejected objects remain gray. Selected green boundaries take precedence over
@@ -19,11 +19,28 @@ detection. The mouse wheel zooms around the pointer. Middle-button dragging or
 the scrollbars pan. **Fit image** restores a whole-field view. Hiding overlays
 allows inspection of the underlying image without labels.
 
-For **Add**, choose the tool and draw an outline around a missed nucleus. For
-**Redraw**, select exactly one existing nucleus first, choose the tool, and draw
+For **Add nucleus**, choose the tool and draw an outline around a missed nucleus. For
+**Edit outline**, select exactly one existing nucleus first, choose the tool, and draw
 its replacement boundary. Click polygon vertices or drag a freehand outline;
-**Enter / Finish outline** closes and applies it. Right-click removes the last
-outline point. **Esc / Cancel outline** abandons the unfinished outline.
+**Enter / Finish** closes and applies it. Right-click removes the last
+outline point. **Esc / Cancel** abandons the unfinished outline. These buttons
+appear only while a drawing tool is active.
+
+The side panel keeps manual **PNC+ / PNC− / Auto**, **Exclude nucleus**, and
+**Checked & next** available without scrolling. **More actions** contains flags,
+notes, split, merge, delete, redo, reset and verified-reference tools. **Advanced**
+opens method/protocol settings, Z evidence and detailed measurements.
+
+### Spatial numbers and persistent identities
+
+Numbers read left to right within approximate horizontal rows, then downward.
+Rows use centroid positions and half the median area-equivalent nucleus diameter
+as their vertical tolerance (at least one pixel). Excluded nuclei keep a number;
+filtering the list or changing PNC calls/thresholds leaves numbers unchanged.
+Adding, deleting, splitting, merging or moving an outline may change display
+numbers. The original internal `MaskID`, review history and label-array IDs
+remain separate from display numbers. Each saved revision includes
+`nucleus_numbering.csv` mapping display number to mask ID, row and centroid.
 
 Manual outlines must describe a connected object containing at least three
 pixels. They bypass automatic nucleus-area limits, allowing corrections to small
@@ -37,7 +54,7 @@ Adding or redrawing a nucleus does not invoke the SVM again.
 | Action | Geometry and counting behavior |
 | --- | --- |
 | Reject / exclude | Keeps the boundary and ID for inspection; removes it from the denominator and PNC+ count |
-| Accept / restore | Restores a rejected nucleus to counting; its positive-pixel count determines PNC status |
+| Restore nucleus | Restores a rejected nucleus to counting; the current PNC method or manual override determines PNC status |
 | Flag for follow-up | Highlights the boundary yellow and marks the CSV; keeps it counted until a decision is made |
 | Clear flag | Removes the follow-up marker |
 | Delete selected | Removes geometry from the current review; undo can restore it |
@@ -53,7 +70,7 @@ mask that would substantially overlap an accepted mask is blocked to prevent
 double counting. Existing small automatic overlaps are retained in the original
 snapshot rather than silently rewritten.
 
-The positive-pixel cutoff and threshold image come from the saved analysis, and
+The PNC method and threshold image come from the saved analysis, and
 the current cutoff is displayed at the top. Counts update immediately after each
 edit. Geometry measurements are recomputed in a background thread when saving.
 Manual acceptance/rejection decisions override automatic SVM and overlap
@@ -64,21 +81,23 @@ original** restores the original geometry and decisions and can itself be undone
 IDs of unaffected nuclei stay stable. Undo/redo stacks last for the current
 session; original snapshots and the audit history persist across saves/reopening.
 
-Version 0.4 adds review queues, reviewer notes, confirmation state, manual PNC
-calls, verified reference sets, and optional spot counting. See the
+Review queues, reviewer notes, confirmation state, manual PNC calls, verified
+reference sets and optional spot counting remain available. See the
 [accuracy workflow guide](accuracy-workflow.md). Geometry changes reset
 confirmation and manual PNC overrides. To verify an empty field, select no nuclei
-and press **Confirm geometry + PNC**. Border-excluded detections remain excluded
+and press **Checked & next**. Border-excluded detections remain excluded
 regardless of manual acceptance.
 
 ## Saved revisions
 
-**Save new revision** (Ctrl+S) asks for a parent folder and creates a unique
+**Save review** (Ctrl+S) asks for a parent folder and creates a unique
 `review-TIMESTAMP-ID` directory inside it. Each revision is self-contained and
 includes:
 
 - Corrected `nuclei.csv`, `summary.csv`, `analysis.json`, `images.npz`, and
   `visualization.png`. Flagged outlines are yellow in the exported visualization.
+- `nucleus_numbering.csv`: spatial numbers linked to persistent mask IDs. The
+  measurement CSV also includes `DisplayNumber`; label TIFFs still use `MaskID`.
 - `nuclei_masks.npz`: exact reviewed candidate geometry. Stable IDs and decisions
   are stored in the CSV and review document rather than inferred from area order.
 - `reviewed_labels.tif`: uint32 instance labels, zero background, one ID per

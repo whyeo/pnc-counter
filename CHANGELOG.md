@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.7.0 review interface preview (0.7.0.dev6, unreleased)
+
+- Replaces the scrolling review sidebar with a fixed native Python side panel.
+  PNC calls, exclusion, review navigation and Save remain visible. The threshold
+  sits above the image; drawing actions appear only while outlining.
+- Moves notes, split/merge/delete, flags and less-used settings into More actions
+  and Advanced. Combines the duplicate main-window review buttons.
+- Formats the enrichment entry to two decimal places, including slider changes.
+- Numbers nuclei left to right across approximate rows. Persistent mask IDs,
+  annotations and label arrays remain unchanged. Exports include DisplayNumber
+  and a per-revision nucleus_numbering.csv mapping; geometry edits may renumber.
+- Retains dev5 detection/scoring, the 1.8x default, manual overrides and immutable
+  revisions. Local preview only; owner testing is required before finalization.
+
 ## v0.7.0 local enrichment preview (0.7.0.dev5, unreleased)
 
 - Makes local enrichment, initially 1.8x, the PNC protocol for new analyses.

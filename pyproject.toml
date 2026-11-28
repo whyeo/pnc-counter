@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nucleus-analysis"
-version = "0.7.0.dev5"
+version = "0.7.0.dev6"
 description = "Python nucleus segmentation and perinucleolar compartment counting"
 readme = "README.md"
 requires-python = ">=3.10"

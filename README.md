@@ -5,7 +5,7 @@ with perinucleolar compartments (PNCs) in Nikon ND2 and multichannel TIFF images
 SAM finds the nucleus boundaries; **local enrichment** measures candidate PNC
 brightness relative to the surrounding nucleoplasm.
 
-**Current revision: 0.7.0.dev5, the v0.7.0 local preview.** The default local enrichment threshold
+**Current revision: 0.7.0.dev6, the v0.7.0 local preview.** The default local enrichment threshold
 is **1.8x**. Automatic calls are a starting point for human review. This preview
 must be tested locally before its release is finalized.
 
@@ -22,7 +22,7 @@ This README describes the current revision. Version history is in the
 4. Choose the output folder and click **Analyze images**.
 5. Open a completed analysis to inspect nuclei, candidate PNCs and automatic calls.
    Adjust the local enrichment threshold, correct individual calls as needed,
-   then **Save new revision**.
+   then **Save review** to create a new revision.
 
 The input preview and analysis use the same selected maximum projection. Display
 contrast only changes what you see; it does not change measured intensities.
@@ -50,7 +50,7 @@ Threshold adjustments reuse prepared measurements and nucleus geometry. They do
 not rerun SAM. Counts and overlays update after a short pause. Review flagged
 references and incidental bright structures before accepting the counts.
 
-**Use for next analysis** reuses the selected PNC protocol for subsequent images.
+**Advanced → Use for next analysis** reuses the selected PNC protocol for subsequent images.
 The method and threshold are recorded with saved results. Reopening an older
 analysis preserves its stored protocol until you explicitly change it. Existing
 preferences also retain the selected protocol; choose **Local enrichment** and
@@ -58,17 +58,29 @@ preferences also retain the selected protocol; choose **Local enrichment** and
 
 ## Correct individual results
 
-Open **Review / correct selected** or **Open saved analysis**. Saved analyses can
+Open **Review results** or **Open saved analysis**. Saved analyses can
 be reviewed using their stored images and masks without loading SAM or the
 original ND2 file.
 
 - Select a nucleus to inspect its automatic call and any review flags.
+- The fixed side panel keeps **PNC+**, **PNC−**, **Auto**, **Exclude nucleus**,
+  and **Checked & next** visible. Exclusion removes an unsuitable segmentation
+  from the counts; a PNC-negative nucleus remains in the denominator.
 - Set a manual positive or negative PNC call when you disagree. Manual overrides
   take precedence over automatic threshold changes.
 - Add a missed nucleus, redraw an incorrect boundary, split touching nuclei,
   merge fragments, or reject an unsuitable detection. Undo and redo are available.
 - Save a **new revision** to preserve the original analysis, reviewed geometry,
   threshold, manual decisions and correction history.
+
+**Add nucleus**, **Edit outline** and **Undo** stay above the image. Finish/Cancel
+appear while drawing. Split, merge, delete, notes and flags are under **More
+actions**; method settings and technical diagnostics are under **Advanced**.
+
+Nuclei are numbered left to right within approximate rows, then top to bottom.
+Display numbers and internal mask IDs are mapped in every export. Threshold,
+PNC-call and exclusion changes do not renumber nuclei. Geometry edits can change
+the spatial order; the mapping is saved separately for each revision.
 
 See the [manual review guide](docs/manual-review.md) for geometry-editing tools
 and saved-file details.
@@ -146,6 +158,7 @@ Each image has its own results directory. Outputs include:
 | Output | Purpose |
 | --- | --- |
 | `nuclei.csv` | Per-nucleus measurements, automatic calls and review information. |
+| `nucleus_numbering.csv` | Spatial display number → persistent mask ID, row and centroid. |
 | `spots.csv` | Candidate PNC measurements when produced by the selected method. |
 | `visualization.png` | Image overlays for checking the analysis. |
 | `analysis.json` | Saved configuration and provenance used when reopening the analysis. |

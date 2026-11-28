@@ -11,6 +11,8 @@ from PIL import Image, ImageDraw
 from skimage.segmentation import find_boundaries
 
 from .imaging import scale_uint8
+from .numbering import ALGORITHM as NUMBERING_ALGORITHM
+from .numbering import spatial_numbering
 from .segmentation import save_masks
 
 STAT_COLUMNS = ["MaskID", "Area", "Smoothness", "PercentileIntensity_IQR",
@@ -44,8 +46,10 @@ def overlay(result):
         base[find_boundaries(flagged, mode="inner")] = (255, 220, 20)
     image = Image.fromarray(base)
     draw = ImageDraw.Draw(image)
+    mapping, _ = spatial_numbering(result.full_stats)
+    numbers = {row["MaskID"]: row["DisplayNumber"] for row in mapping}
     for row in result.full_stats:
-        draw.text((row["CentroidX"] - 1, row["CentroidY"] - 1), str(row["MaskID"]),
+        draw.text((row["CentroidX"] - 1, row["CentroidY"] - 1), str(numbers[row["MaskID"]]),
                   fill="white", anchor="mm")
     return image
 
@@ -74,9 +78,14 @@ def visualization(result):
 def export_result(result, directory, *, provenance=None):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
+    mapping, row_tolerance = spatial_numbering(result.full_stats)
+    numbers = {row["MaskID"]: row["DisplayNumber"] for row in mapping}
+    exported_rows = [dict(row, DisplayNumber=numbers[row["MaskID"]]) for row in result.full_stats]
     extra_columns = list(dict.fromkeys(key for row in result.full_stats for key in row
-                                      if key not in STAT_COLUMNS))
-    write_csv(directory / "nuclei.csv", result.full_stats, STAT_COLUMNS + extra_columns)
+                                      if key not in STAT_COLUMNS and key != "DisplayNumber"))
+    write_csv(directory / "nuclei.csv", exported_rows, STAT_COLUMNS + ["DisplayNumber"] + extra_columns)
+    write_csv(directory / "nucleus_numbering.csv", mapping,
+              ["DisplayNumber", "MaskID", "Row", "CentroidX", "CentroidY"])
     from . import __version__
 
     app_version = __version__
@@ -85,6 +94,13 @@ def export_result(result, directory, *, provenance=None):
                 "config": result.config.to_dict(), "input": result.metadata,
                 "segmentation": provenance or {"kind": "generated", "backend": result.config.backend},
                 "centroid_coordinates": "one-based X/Y pixels, matching MATLAB"}
+    metadata["nucleus_numbering"] = {
+        "algorithm": NUMBERING_ALGORITHM, "mapping_file": "nucleus_numbering.csv",
+        "order": "approximate rows top to bottom, then centroids left to right",
+        "row_tolerance_pixels": row_tolerance,
+        "row_tolerance_rule": "half median area-equivalent diameter, at least one pixel",
+        "includes_excluded": True, "persistent_id": "MaskID",
+        "geometry_edits": "display numbers recomputed per revision; mask IDs remain stable"}
     if result.config.pnc_mode == "adaptive":
         from .adaptive_pnc import ALGORITHM, sensitivity_threshold
 
