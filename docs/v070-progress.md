@@ -6,8 +6,9 @@ its detector is ready for adoption.**
 
 Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev2**.
 Latest measured research source: **0.7.0.dev4**, commit
-`c9e57c9243b82e5922427deae3b5663f0121f18e` (5A; documentation-only
-checkpoint after step 4, with unchanged application algorithms).
+`009f985be87061b7ce045f92adc438e0bde3744b` (5B; documentation-only
+changes since step 4, with unchanged application algorithms). Both sides of the
+guard comparison use app version **0.7.0.dev4**; rendering revisions are separate.
 No improved biological accuracy has been demonstrated. Final v0.7 publication
 requires the owner's local testing and explicit approval.
 
@@ -28,16 +29,17 @@ requires the owner's local testing and explicit approval.
 | Step 4: raw spatial support | Done as diagnostic | The hot pixel had one raw support pixel despite 17 filtered support pixels. | No rejection rule adopted; a rule could also reject small signals. |
 | Independent Big-FISH baseline | Blocked; not run | Separate research installation could not obtain the pinned NumPy distribution. Product dependencies unchanged. | Optional baseline when a compatible research environment is available; do not block the next diagnostic on it. |
 | Step 5A: inspect the real small example | Done; inspection only | SAG5A-dev4-r1-20261128: native pixel/context views locate the unreviewed two-pixel footprint. Filtered excess 37.05/40.02 is below the unchanged seed cutoff 80.68; no size/hot-pixel veto caused this miss. | Identity and the owner's intended small PNC remain unreviewed. Raw reference MAD 45.68 is not verified instrument noise. |
-| Step 5B: one expanded-guard comparison | In progress | SAG5B-dev4-r1-20261128: inner reference exclusion 8 to 12 sigma, outer 20 sigma and original 8-sigma evaluation core fixed; declared before outputs in the 5A plan. | Measure reference contamination, fit adequacy, signal retention and failures without a second size/model search. |
+| Step 5B: one expanded-guard comparison | Done; useful mixed result | SAG5B-dev4-r1-20261128: reference guard 8 to 12 sigma only; positive anchor prior-footprint fit weight 15.70% to 2.63%. All 29 probe component outcomes unchanged; five original supported no-spot probes remain empty. | Nearby-focus contamination persists; curved central-background RMSE worsens 6.453 to 7.772; small anchor still misses, hot pixel still passes. Three boundary probes remain indeterminate. No second guard tried. |
+| Biological identification and detector adoption | Pending | Steps 4 and 5 provide controlled diagnostic progress; no product detector adopted. | Owner identification of the intended small structure; structured-reference variation and plane adequacy remain unresolved. No biological improvement claim. |
 | Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review step 5 before expanding candidate generation, adding rejection rules or measuring validation again. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
-## Next approved checkpoint
+## Checkpoint 5: completed; review pending
 
 The v0.7 agent owns execution and report updates; the bridge agent maintains the
 handoff and release boundary. The owner approved this next step on 28 November.
-Execution status: 5A is complete; 5B is in progress. The paragraphs below retain
-the approved scope rather than reopening completed work.
+Execution status: **5A and 5B are complete; product adoption is pending.** The
+paragraphs below retain the approved scope and do not authorize further work.
 
 **5A: inspect the small example before changing a rule.** Reuse the fixed small
 IMG9/nucleus 23 selection. Show the whole nucleus and a native-resolution pixel
@@ -96,11 +98,77 @@ assets or files included in the Git repository.
 | Background and histogram step 3 | BGH3 dev4 revision 1 | [Step 3](../validation/local/pnc-discrimination/background-histogram-step3-dev4/report.html) |
 | Local background and noise step 4 | LPN4-dev4-r1-20261128 | [Step 4](../validation/local/pnc-discrimination/local-plane-noise-step4-dev4/report.html) |
 | Small example step 5A | SAG5A-dev4-r1-20261128; app dev4, render 1; clean measurement HEAD c9e57c9243b82e5922427deae3b5663f0121f18e | [Native small-anchor inspection](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-a.html) |
-| Guard comparison step 5B | SAG5B-dev4-r1-20261128; in progress | Pending |
+| Guard comparison step 5B | SAG5B-dev4-r1-20261128; app dev4 before/after, render 2; clean measurement HEAD 009f985be87061b7ce045f92adc438e0bde3744b | [One-guard comparison](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/report-b-v2.html) |
 
-Step 5A algorithm provenance: application enrichment SHA256
+### Checkpoint 5 before/after findings
+
+The same three DEVELOPMENT nuclei and ten preserved synthetic inputs (the
+original nine scenes plus the step-4 curved stress case) supplied 29 fixed
+probes. Evaluation cores, SAM geometry, filter, plane/Huber settings, noise-width
+formula, decision constants and support checks stayed fixed. Only the reference
+inner guard changed from 8 to 12 sigma, with the outer radius at 20 sigma. The
+report separates the background change with old width frozen from recomputing
+the same width formula on the changed reference. Neither condition is a product
+detector or a biological call. No validation data were remeasured.
+
+| Fixed measure | Before: dev4, guard 8 | After: dev4, guard 12 |
+| --- | --- | --- |
+| Positive real anchor prior-footprint reference overlap / fit weight | 203 pixels / 15.70% | 35 pixels / 2.63%; contamination not eliminated |
+| Positive real nearby probe footprint overlap / fit weight | 197 / 12.58% | 150 / 12.02%; off-center contamination remains |
+| Small real anchor filtered excess / seed cutoff | 40.02 / 80.68 | 33.73 / 77.16; still misses (80.68 with old width frozen) |
+| Strong gradient injected signal retained in identical core | 99.97346% | 99.99999%; original region remains |
+| Irregular injected signal retained in identical core | 99.64641% | 99.99952%; original region remains |
+| Curved no-spot central core background RMSE | 6.45288 | 7.77172; worsens despite lower reference MAD and better conditioning |
+| Nearby strong-focus synthetic core background RMSE | 0.31521 | 0.39163; worsens |
+| Supported no-spot probes with any accepted region | 0/5 original; 0/2 curved stress | 0/5 original; 0/2 curved stress |
+| Hot-pixel filtered support / boundary probes | 17 pixels; three indeterminate | 17 pixels; three indeterminate |
+
+All 26 supported probe component counts are unchanged; the same three boundary
+probes remain indeterminate. Some support pixels change, including the positive
+nearby probe (4 to 6). Small-reference raw MAD changes 45.68 to 43.36, but neither
+value is verified instrument noise. The negative-folder anchor still has strong
+localized evidence; folder membership cannot establish a false PNC call.
+
+Use the [whole-nucleus location](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/small-context.png),
+[native 21-by-21 crop](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/small-anchor-native.png)
+and [actual-pixel grid](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/small-pixel-grid.png)
+to review the unconfirmed two-pixel structure. Guard-comparison
+[small profiles/histograms](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/guard-plots-r2/PNC-small-IMG9-n23-anchor-profiles-histograms.png),
+[positive reference profiles](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/guard-plots-r2/PNC-positive-IMG1-n74-anchor-profiles-histograms.png)
+and [curved-background maps](../validation/local/pnc-discrimination/small-anchor-guard-step5-dev4/guard-plots-r2/curved-no-spot-stress-anchor-maps.png)
+show the mixed result. The full report includes every probe, matched scales,
+fixed profiles, exact arrays and population-counted histograms. Rendering 1 is
+preserved; rendering 2 clarifies display labels/domains without new measurements.
+
+Targeted checks: all 29 baseline fits reproduce step 4; common cores/windows and
+reference-subset checks pass; native raw TIFF is exact; histogram counts and
+local links pass. All 251 protected files are hash-unchanged, including prior
+reports/arrays and the dev2 installer. The 61 original 5B rendering files also
+remain unchanged. Fit-only median timings were 3.019 ms before and 2.341 ms after
+on 29 probes in an existing CPU Python process; these exclude imports/loading,
+evidence, rendering, cold app/SAM preparation and warm-slider latency. No product
+suite was rerun because implementation did not change.
+
+**Review recommendation:** do not adopt guard growth as a general correction.
+Review the intended small structure and prioritize a bounded diagnostic of plane
+adequacy and structured-reference variation on the preserved probes before any
+broader implementation. Stop here for review; no further experiment, threshold
+rescue, hot-pixel rule or dependency retry belongs to this completed checkpoint.
+
+Step 5 algorithm provenance: application enrichment SHA256
 `2ff62e9a89f85f01748d8ed87b0f4556f0413624f7bf3138191c253e82af8b90`;
 preserved LPN4 diagnostic SHA256
 `29047cd45e9e5b708aa5ae3d03aada97b52d60c8daf6ed740489b4ced3595636`.
-Exact input, inspection-script and protected-artifact hashes remain in the local
-5A plan/results. No estimator or decision rule was rerun in 5A.
+The original LPN4 clean source commit is
+`5df32d0fcb2f012bf870e33c145cd1119e3cfccf`. 5A inspection-script SHA256 is
+`9228a580a84ee8480fbcf9e235816b1d60167976dc19d04e83a5c3b3420f947d`;
+5B experiment-script SHA256 is
+`798f9a02721bead70e3e21d949a8ddd987eae33afd1a410369222181a107ed84`.
+The diagnostic fit-function hashes are
+`6752f618b2b4e11de9981c428e8ae077eff028384adcaa9d4352f35bcdd159dc`
+before and `e99d3db9406e233ccc1ec2f04651c2f6db3961bca86ac4fd16f00b6a3fa14e4c`
+after; their ASTs differ only by the reference-selection constant 8 to 12.
+Exact input, unchanged evidence-function, rendering and protected-artifact hashes
+remain in the local plans/results and verification files. No estimator or
+decision rule was rerun in 5A. Final documentation/delivery commit and clean state
+are recorded separately in the local handoff, rather than replacing measured HEADs.
