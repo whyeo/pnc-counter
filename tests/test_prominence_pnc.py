@@ -162,6 +162,7 @@ def test_evidence_cache_selection_algorithm_and_scale_invalidation(tmp_path, mon
 
 
 def test_gui_load_and_inspect_z_never_changes_calls_or_runs_sam(tk_window, tmp_path, monkeypatch):
+    import threading
     import time
 
     import tifffile
@@ -178,6 +179,14 @@ def test_gui_load_and_inspect_z_never_changes_calls_or_runs_sam(tk_window, tmp_p
     p = read_image(path, config)
     export_result(analyze(p, config, masks=masks), tmp_path / "original")
     editor = ReviewEditor(tk_window, tmp_path / "original")
+    from nucleus_analysis import review
+
+    main_thread = threading.get_ident()
+    prepare = review.prepare_prominence
+    def off_thread(*args, **kwargs):
+        assert threading.get_ident() != main_thread, "Raw Z loading must prepare features off the Tk thread"
+        return prepare(*args, **kwargs)
+    monkeypatch.setattr(review, "prepare_prominence", off_thread)
     monkeypatch.setattr("nucleus_analysis.segmentation.Segmenter.generate",
                         lambda *a: pytest.fail("Remeasurement must not call SAM"))
     def pump(condition):

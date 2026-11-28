@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.7.0 development preview (0.7.0.dev2, not finalized)
+
+- Initial channel previews now use the same selected maximum Z projection as
+  analysis, with channel/time/position labels and a shared marker display range.
+- Added an optional multiscale prominence protocol with bounded noise scores,
+  local/nuclear background, spatial support, multiplicity correction and review flags.
+- Added compact streamed per-plane evidence, inspection of candidate source planes,
+  an explicit projection fallback, cache versioning and self-contained revision exports.
+- Retained the legacy default: the predefined HeLa comparison failed to preserve
+  positive and small-PNC signals while suppressing negative-group calls. No accuracy
+  improvement is claimed. See [preview testing and limitations](docs/v070-preview.md).
+- Development preview only. Owner testing and explicit approval are still required
+  before finalization, a stable tag or publication.
+
 ## v0.7.0 development preview (0.7.0.dev1, not finalized)
 
 - Added an optional intranuclear background/noise-aware PNC candidate detector,

@@ -250,7 +250,11 @@ class ReviewEditor:
                 if any(not np.array_equal(getattr(old, k), getattr(projections, k))
                        for k in ("dapi_mean", "dapi_max", "pnc_max")):
                     raise ValueError("Raw projections differ from this analysis. Reanalyze the source explicitly.")
-                self.events.put(("z_evidence", (projections, config)))
+                snapshot = copy.copy(self.session)
+                snapshot.projections = projections
+                snapshot.config = config
+                snapshot.counts()  # Prepare features on this worker, before touching Tk.
+                self.events.put(("z_evidence", snapshot))
             except Exception as exc:
                 self.events.put(("evidence_error", str(exc)))
         self._pnc_worker = threading.Thread(target=worker, daemon=True)
@@ -725,9 +729,9 @@ class ReviewEditor:
                 if self.on_saved:
                     self.on_saved(directory, stats)
             elif kind == "z_evidence":
-                projections, config = payload
-                self.session.set_pnc_config(config)
-                self.session.projections = projections
+                self.session.projections = payload.projections
+                self.session.set_pnc_config(payload.config, payload)
+                self.session.masks = {i: replace(mask, reviewed=False) for i, mask in self.session.masks.items()}
                 self.session._record("load_z_evidence", [], "Raw projections verified equal; compact per-plane evidence added")
                 self.status.set("Z evidence loaded. Review the calls and save a new revision to retain it.")
                 self.refresh()

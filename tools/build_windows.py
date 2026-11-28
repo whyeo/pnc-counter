@@ -152,7 +152,8 @@ def main():
          f"/DFileBaseName={filename}", f"/DRuntimeDir={runtime}", f"/DOutputDir={output_dir}", *options,
          ROOT / "installer/windows/pnc-counter.iss"])
     installer = output_dir / f"{filename}.exe"
-    notes = ("- Local v0.7 preview: background-aware PNC candidates and live sensitivity controls.\n"
+    notes = ("- Local v0.7 preview: consistent projections, multiscale PNC scores and compact Z evidence.\n"
+             "- The control comparison failed the preservation trade-off; legacy defaults remain.\n"
              "- Test controls and small PNCs locally; biological accuracy is not established.\n"
              "- Separate preview installation and preferences; not approved for a stable release.\n") if args.preview else None
     write_release_assets(installer, manifest, notes)

@@ -8,11 +8,16 @@ CLI, and Python API. No MATLAB, Java, Bio-Formats, pandas, or web server is need
 or visit [Releases](https://github.com/whyeo/pnc-counter/releases) for release notes,
 checksums, and verification reports. The installer includes Python; MATLAB is not required.
 
-**In development: v0.7.0 local preview (`0.7.0.dev1`).** This adds an optional
+**In development: v0.7.0 local preview (`0.7.0.dev2`).** This adds an optional
 background-aware PNC detector and a live sensitivity slider. It has not been
 approved as a stable release; v0.6.0 remains the published download. The preview
 does not establish improved biological accuracy. Local testing and approval are
 required before creating a v0.7.0 tag or publishing its installer.
+
+The dev2 preview fixes the initial preview/projection discrepancy and adds optional
+multiscale prominence scores with compact Z evidence. Its predefined control
+comparison **failed the separation/preservation trade-off**; legacy defaults are
+retained. See [local preview testing and limitations](docs/v070-preview.md).
 
 **Accuracy status:** automatic PNC classification still needs calibration and
 manual review. HeLa control-folder testing found substantial positive calls in
@@ -238,7 +243,8 @@ separate preferences and model setup. To test just the new PNC detector, choose
 **Set up later**, then **Open saved analysis** and select an existing v0.6.0
 `analysis.json`. This uses saved projections and nuclei and does not require SAM.
 
-1. In the review window, choose **Background-aware (preview)** in **PNC sensitivity**.
+1. In the review window, choose **Multiscale prominence (preview)** in **PNC sensitivity**.
+   **Background-aware (preview)** retains the earlier adaptive-v1 method.
 2. Move the slider toward **Stricter** or **More sensitive**. The overlay, candidate
    spots, and counts update after a short pause. Nucleus boundaries stay fixed.
 3. Inspect the **PNC**, **PNC threshold**, and **DAPI + PNC** views. Confirm small
@@ -247,6 +253,12 @@ separate preferences and model setup. To test just the new PNC detector, choose
    the original analysis. Manual PNC overrides remain in effect.
 5. **Use for next analysis** saves the PNC settings for subsequent analyses.
    To process new raw images, complete the preview's SAM setup first.
+
+Projection-only saved analyses are labeled as 2D. **Load Z evidence from source**
+can add compact per-plane measurements without changing nuclei when raw files are
+available. **Inspect candidate Z plane** is inspection-only; the saved calls stay
+fixed. **Marker display range** allows matching contrast across images. See the
+[dev2 guide](docs/v070-preview.md) for source verification and fallback behavior.
 
 The new method estimates intranuclear background and robust noise, then selects
 connected candidate puncta by their signal strength. The slider spans a broad
@@ -260,7 +272,8 @@ The detector scores bright puncta; it does not verify nucleolar identity or
 produce a calibrated probability. Early real-control testing still showed excess
 calls in negative fields, so the legacy default is retained. Saved protocols
 remain explicit about which method generated their results. Further improvements
-need reviewed positive/negative puncta, including genuinely small PNCs.
+need visual validation of positive/negative puncta, including genuinely small
+PNCs. The optional spot-check does not train a model or become a required labeling step.
 
 Developers can build the isolated local preview with:
 
@@ -409,7 +422,7 @@ python -m pip install -e ".[dev]"
 python -m pytest
 python -m ruff check src tests tools
 python -m build
-python -m pip install dist/nucleus_analysis-0.7.0.dev1-py3-none-any.whl
+python -m pip install dist/nucleus_analysis-0.7.0.dev2-py3-none-any.whl
 ```
 
 The wheel contains only Python code and the small exported SVM, with no raw data,

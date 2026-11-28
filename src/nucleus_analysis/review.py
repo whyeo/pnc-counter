@@ -360,11 +360,10 @@ class ReviewSession:
                      config=self.original_config)
 
     def set_pnc_config(self, config, preview=None):
-        if config == self.config:
-            return
-        self._commit("change_pnc_settings", dict(self.masks), [],
-                     json.dumps({"pnc_mode": config.pnc_mode, "pnc_sensitivity": config.pnc_sensitivity}),
-                     config=config)
+        if config != self.config:
+            self._commit("change_pnc_settings", dict(self.masks), [],
+                         json.dumps({"pnc_mode": config.pnc_mode, "pnc_sensitivity": config.pnc_sensitivity}),
+                         config=config)
         if preview is not None:
             for name in ("_marker_config", "_positive_pixels", "_spot_labels", "_spot_rows",
                          "_adaptive_features", "_adaptive_geometry_key", "_adaptive_source_masks"):

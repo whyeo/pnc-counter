@@ -162,7 +162,8 @@ def render_case(output, case, projection, session, labels, features, method, sen
     for i, (y, x, title) in enumerate(centers):
         cy, cx = int(y), int(x)
         draw.text((5, i*235+2), title[:95], fill="white")
-        for j, (array, name) in enumerate(((raw, "Raw: same display range"), (overlay, "Accepted boundaries"), (evidence, "Per-plane score (0..20)"))):
+        evidence_title = "Per-plane score (0..20)" if projection.pnc_evidence else "Projection; no Z evidence"
+        for j, (array, name) in enumerate(((raw, "Raw: same display range"), (overlay, "Accepted boundaries"), (evidence, evidence_title))):
             crop = array[max(0, cy-45):cy+46, max(0, cx-45):cx+46]
             tile = Image.fromarray(crop).resize((196, 196))
             panel.paste(tile, (j*200, i*235+35))
