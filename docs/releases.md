@@ -83,6 +83,12 @@ After committing, push the source via GitHub Desktop. Run **Windows installer**
 manually to prepare the initial draft, or push a matching version tag for a
 stable release once its candidate is verified.
 
+To rebuild an existing tag using the latest workflow fixes, run the workflow
+from `main` and set **release_tag** to that tag (for example, `v0.7.0`). The
+workflow checks out the tagged source, records its actual commit, and attaches
+verified outputs to a draft. It leaves the tag unchanged and does not publish
+the draft. Leave this input blank to build the selected branch instead.
+
 The website should read GitHub Releases for `whyeo/pnc-counter`, exclude entries
 with `draft` or `prerelease`, and show the latest three by publication date. Use
 each asset's `browser_download_url` rather than reconstructing its versioned name.

@@ -3,6 +3,12 @@ on:
   push:
     tags: ['v[0-9]*.[0-9]*.[0-9]*']
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing stable tag to rebuild as a draft (blank builds the selected branch)'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -19,6 +25,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -27,9 +34,9 @@ jobs:
         id: version
         shell: pwsh
         env:
-          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || '' }}
         run: |
-          python -c "import os; from tools.release_metadata import project_version,validate_tag; v=project_version('.'); t=os.environ.get('TAG'); validate_tag(t,v) if t else None; print('version='+v)" >> $env:GITHUB_OUTPUT
+          python -c "import os,subprocess; from tools.release_metadata import project_version,validate_tag; v=project_version('.'); t=os.environ.get('TAG'); validate_tag(t,v) if t else None; print('version='+v); print('source_sha='+subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip())" >> $env:GITHUB_OUTPUT
       - run: python -m pip install -e ".[dev]" -c installer/windows/constraints.txt
       - run: python -m ruff check src tests tools
       - run: python -m pytest -W error::pytest.PytestUnraisableExceptionWarning
@@ -40,12 +47,17 @@ jobs:
       - name: Install and analyze ND2 without MATLAB
         shell: pwsh
         run: |
-          python tools/verify_windows_installer.py "dist/PNC-Counter-${{ steps.version.outputs.version }}-Setup-x64.exe" --require-no-matlab --setup-sam --expected-commit $env:GITHUB_SHA
+          python tools/verify_windows_installer.py "dist/PNC-Counter-${{ steps.version.outputs.version }}-Setup-x64.exe" --require-no-matlab --setup-sam --expected-commit "${{ steps.version.outputs.source_sha }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item -LiteralPath validation/local/release-smoke/verification.json -Destination dist/verification.json
       - name: Verify upgrade and repair without touching other installations
         shell: pwsh
         run: |
-          python tools/verify_windows_maintenance.py --inno build/windows/tools/inno/ISCC.exe --workdir validation/local/release-maintenance --previous-version 0.6.0
+          $compiler = Get-Command ISCC.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+          $compilerPath = if ($compiler) { $compiler.Source } else { Join-Path $PWD 'build/windows/tools/inno/ISCC.exe' }
+          if (-not (Test-Path -LiteralPath $compilerPath)) { throw "Inno compiler not found: $compilerPath" }
+          python tools/verify_windows_maintenance.py --inno "$compilerPath" --workdir validation/local/release-maintenance --previous-version 0.6.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item -LiteralPath validation/local/release-maintenance/verification.json -Destination dist/maintenance-verification.json
       - uses: actions/upload-artifact@v4
         with:
@@ -63,6 +75,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
           EVENT_NAME: ${{ github.event_name }}
+          SOURCE_SHA: ${{ steps.version.outputs.source_sha }}
         run: |
           $tag = "v$env:VERSION"
           $assets = @("dist/PNC-Counter-$env:VERSION-Setup-x64.exe", "dist/SHA256SUMS.txt", "dist/build-info.json", "dist/verification.json", "dist/maintenance-verification.json")
@@ -70,13 +83,13 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             $release = $existing | ConvertFrom-Json
             if (-not $release.isDraft) { throw "Stable release $tag already exists; its assets will not be overwritten." }
-            if ($release.targetCommitish -ne $env:GITHUB_SHA) { throw "Existing draft targets a different commit; inspect it before replacing assets." }
+            if ($release.targetCommitish -ne $env:SOURCE_SHA) { throw "Existing draft targets a different commit; inspect it before replacing assets." }
             gh release upload $tag @assets --clobber
             if ($LASTEXITCODE -ne 0) { throw "Release upload failed" }
             gh release edit $tag --notes-file dist/release-notes.md
             if ($env:EVENT_NAME -eq 'push') { gh release edit $tag --draft=false --latest }
           } else {
-            $options = @('--target', $env:GITHUB_SHA, '--title', "PNC Counter $tag", '--notes-file', 'dist/release-notes.md')
+            $options = @('--target', $env:SOURCE_SHA, '--title', "PNC Counter $tag", '--notes-file', 'dist/release-notes.md')
             if ($env:EVENT_NAME -eq 'push') { $options += @('--verify-tag', '--latest') }
             else { $options += '--draft' }
             gh release create $tag @assets @options
