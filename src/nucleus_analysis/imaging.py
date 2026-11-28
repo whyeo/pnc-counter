@@ -34,6 +34,14 @@ def scale_uint8(image):
     return np.floor((image - lo) * (255.0 / (hi - lo)) + 0.5).astype(np.uint8)
 
 
+def display_uint8(image, limits=None):
+    """Display-only contrast; explicit raw limits allow comparisons across fields."""
+    lo, hi = np.percentile(image, (1, 99.7)) if limits is None else limits
+    if not np.isfinite([lo, hi]).all() or (limits is not None and hi <= lo):
+        raise ValueError("Display maximum must exceed minimum; both must be finite")
+    return np.clip((image.astype(float) - lo) * 255 / max(hi - lo, 1e-12), 0, 255).astype(np.uint8)
+
+
 def _check_image(array):
     real_numeric = (np.issubdtype(array.dtype, np.integer)
                     or np.issubdtype(array.dtype, np.floating))

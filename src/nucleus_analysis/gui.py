@@ -10,7 +10,7 @@ import time
 import tkinter as tk
 from dataclasses import fields, replace
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from PIL import Image, ImageTk
 
@@ -55,6 +55,7 @@ class CounterApp:
         self.hardware = cached_hardware(self.preferences)
         self.preview_image = None
         self.preview_token = 0
+        self.preview_contrast = None
         self.total = self.completed = self.failed = 0
         self.started_at = None
         self.current_stage = None
@@ -119,6 +120,7 @@ class CounterApp:
         self.preview.pack(fill="both", expand=True)
         self.preview_caption = tk.StringVar(value="Preview contrast is adjusted for display only.")
         ttk.Label(preview_frame, textvariable=self.preview_caption, wraplength=430).pack(fill="x", pady=6)
+        ttk.Button(preview_frame, text="Set shared marker display range", command=self.set_display_range).pack(fill="x")
         panes.add(preview_frame, weight=2)
         output_row = ttk.Frame(frame)
         output_row.grid(row=5, column=0, sticky="ew", pady=10)
@@ -781,7 +783,13 @@ class CounterApp:
             self.preview_caption.set(f"Analysis error: {meta['error']}")
         else:
             self.preview_caption.set("Completed overlay. Double-click the row to review nuclei." if directory else
-                                     "Raw image, first Z plane. Display contrast only; use Check channels to confirm the marker.")
+                                     f"Analysis input: maximum Z projection, DAPI C{config.dapi_channel}, "
+                                     f"PNC C{config.pnc_channel}, T{config.time_index}, P{config.position_index}. "
+                                     + (f"Shared marker display range: {self.preview_contrast}." if self.preview_contrast
+                                        else "Auto contrast (display only)."))
+
+        contrast = self.preview_contrast
+        cache = Path(self.output.get()) / ".cache"
 
         def load():
             try:
@@ -790,11 +798,28 @@ class CounterApp:
                         source.thumbnail(size)
                         image = source.copy()
                 else:
-                    image = raw_preview(path, config, size) if path else "No source image available"
+                    image = raw_preview(path, config, size, cache=cache, contrast=contrast) if path else "No source image available"
             except Exception as exc:
                 image = f"Preview unavailable: {exc}"
             self.events.put(("preview", (token, self.preview, image)))
         self.start_background(load)
+
+    def set_display_range(self):
+        value = simpledialog.askstring("Marker display contrast", "Raw minimum, maximum shared across image previews (blank = auto)",
+                                       initialvalue=", ".join(map(str, self.preview_contrast or ())), parent=self.root)
+        if value is None:
+            return
+        try:
+            import numpy as np
+
+            from .imaging import display_uint8
+
+            limits = tuple(map(float, value.split(","))) if value.strip() else None
+            display_uint8(np.zeros((1, 1)), limits)
+            self.preview_contrast = limits
+            self.show_preview()
+        except ValueError as exc:
+            messagebox.showerror("Display range", str(exc), parent=self.root)
 
     def download_model(self):
         from .setup_model import download_checkpoint

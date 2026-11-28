@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from xml.etree import ElementTree
 
-import numpy as np
 from PIL import Image, ImageDraw
 
 
@@ -66,55 +65,24 @@ def suggest_channels(metadata):
     return {"dapi_channel": a, "pnc_channel": b}, False
 
 
-def raw_preview(path, config, size=(600, 420)):
-    """Read a representative plane, without segmentation or full-stack projection."""
-    path = Path(path)
-    if path.suffix.lower() == ".nd2":
-        import nd2
+def raw_preview(path, config, size=(600, 420), *, cache=None, contrast=None):
+    """Show the exact selected maximum projections used by analysis, off the Tk thread."""
+    from .imaging import display_uint8
+    from .projection_cache import read_cached
 
-        with nd2.ND2File(path) as reader:
-            index = next(i for i, indices in enumerate(reader.loop_indices)
-                         if indices.get("T", 0) == config.time_index
-                         and indices.get("P", 0) == config.position_index)
-            frame = reader.read_frame(index)
-            if frame.ndim == 2:
-                frame = frame[None]
-            # ND2 returns views into its mmap. Own the selected planes before
-            # closing the reader; accessing a closed mapping can crash Python.
-            planes = [frame[c].copy() for c in (config.dapi_channel, config.pnc_channel)]
-    else:
-        import tifffile
-
-        with tifffile.TiffFile(path) as reader:
-            series = reader.series[0]
-            # Read individual 2D pages when available. Unusual interleaved layouts
-            # use the reader's supported array path, still off the Tk thread.
-            axes, shape = series.axes, series.shape
-            if not all(a in axes for a in "CYX"):
-                raise ValueError("TIFF needs explicit C/Y/X axes; check the acquisition export")
-            choices = {"T": config.time_index, "P": config.position_index}
-            planes = []
-            array = None
-            for channel in (config.dapi_channel, config.pnc_channel):
-                indices = tuple(slice(None) if a in "YX" else channel if a == "C"
-                                else choices.get(a, 0) for a in axes)
-                if axes.endswith("YX") and len(series.pages) == int(np.prod(shape[:-2])):
-                    page = np.ravel_multi_index(indices[:-2], shape[:-2])
-                    plane = series.pages[int(page)].asarray()
-                else:
-                    if array is None:
-                        array = series.asarray()
-                    plane = array[indices]
-                planes.append(plane)
+    projections = read_cached(path, config, cache=cache)
+    planes = (projections.dapi_max, projections.pnc_max)
     tiles = []
-    for plane, label in zip(planes, ("Nuclei / DAPI", "PNC marker")):
-        lo, hi = np.percentile(plane, (1, 99.7))
-        scaled = np.clip((plane.astype(float) - lo) * 255 / max(hi - lo, 1), 0, 255).astype("uint8")
+    labels = (f"DAPI C{config.dapi_channel} | Max Z", f"PNC C{config.pnc_channel} | Max Z")
+    for i, (plane, label) in enumerate(zip(planes, labels)):
+        scaled = display_uint8(plane, contrast if i == 1 else None)
         image = Image.fromarray(scaled).convert("RGB")
         image.thumbnail((size[0] // 2, size[1] - 30))
         tile = Image.new("RGB", (size[0] // 2, size[1]), "#202020")
         tile.paste(image, ((tile.width - image.width) // 2, 30))
-        ImageDraw.Draw(tile).text((8, 8), label, fill="white")
+        draw = ImageDraw.Draw(tile)
+        draw.text((8, 3), label, fill="white")
+        draw.text((8, 16), f"T{config.time_index} P{config.position_index} | display contrast only", fill="white")
         tiles.append(tile)
     result = Image.new("RGB", size)
     result.paste(tiles[0], (0, 0))

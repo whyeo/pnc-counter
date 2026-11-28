@@ -120,6 +120,8 @@ def test_nd2_preview_owns_pixels_before_reader_closes(monkeypatch):
 
     class Reader:
         loop_indices = [{}]
+        sizes = {"C": 2, "Y": 64, "X": 64}
+        metadata = SimpleNamespace(channels=[])
 
         def __init__(self, path):
             pass
@@ -137,6 +139,40 @@ def test_nd2_preview_owns_pixels_before_reader_closes(monkeypatch):
     image = raw_preview("source.nd2", AnalysisConfig(), (200, 200))
     # Exclude the text labels: the actual image must still contain bright nuclei.
     assert np.asarray(image)[40:100].max() == 255
+
+
+def test_preview_matches_selected_analysis_projection(tmp_path, monkeypatch):
+    import nucleus_analysis.projection_cache as module
+    from nucleus_analysis.imaging import read_image
+
+    # The signal is absent from plane zero and present at the selected T/P/C.
+    array = np.zeros((2, 2, 3, 2, 32, 32), dtype=np.uint16)
+    array[1, 1, 2, 0, 8:20, 8:20] = 4000
+    path = tmp_path / "selected.tif"
+    tifffile.imwrite(path, array, metadata={"axes": "TPZCYX"})
+    config = AnalysisConfig(dapi_channel=1, pnc_channel=0, time_index=1, position_index=1)
+    expected = read_image(path, config)
+    actual = []
+    def cached(*args, **kwargs):
+        result = read_image(*args, **{k: v for k, v in kwargs.items() if k != "cache"})
+        actual.append(result)
+        return result
+    monkeypatch.setattr(module, "read_cached", cached)
+    rendered = raw_preview(path, config, size=(200, 150), contrast=(0, 4000))
+    np.testing.assert_array_equal(actual[0].pnc_max, expected.pnc_max)
+    assert np.asarray(rendered)[30:, 100:].max() == 255
+    assert expected.pnc_max.max() == 4000
+
+
+def test_shared_display_contrast_does_not_change_measurements():
+    from nucleus_analysis.imaging import display_uint8
+
+    image = np.array([[100, 200], [300, 400]], dtype=np.uint16)
+    saved = image.copy()
+    a = display_uint8(image, (0, 1000))
+    b = display_uint8(image + 100, (0, 1000))
+    assert a[0, 1] == b[0, 0]
+    np.testing.assert_array_equal(image, saved)
 
 
 def test_batch_stages_and_repeated_threshold_analysis(tmp_path, monkeypatch):
