@@ -1,4 +1,4 @@
-"""Bounded BEFORE dev2 / AFTER dev3 experiment. Run as python -m tools.enrichment_experiment.
+"""Bounded BEFORE dev2 / AFTER dev4 experiment. Run as python -m tools.enrichment_experiment.
 
 The audit and split precede the new comparison. Development selects operating
 points; immutable frozen settings and control profiles precede validation.
@@ -40,7 +40,7 @@ from tools.pnc_loss_audit import (
     write,
 )
 
-LEVELS = (25., 50., 75., 100.)
+LEVELS = (0., 25., 50., 75., 100.)
 AFTER = ("A-half", "A-growth", "B-optional-control", "C-mixture")
 
 
@@ -75,7 +75,8 @@ def plan(output):
           "split_sha256": sha(output / "split.json"), "audit_sha256": sha(output / "audit/summary.json"),
           "before": {"stable_version": "0.6.0", "stable_commit": STABLE,
                      "preview_version": "0.7.0.dev2", "preview_commit": BASELINE},
-          "after_version": "0.7.0.dev3", "algorithm": ALGORITHM, "mapping": MAPPING,
+          "after_version": "0.7.0.dev4", "algorithm": ALGORITHM, "mapping": MAPPING,
+          "range_amendment_sha256": sha(output / "range-amendment.json") if (output / "range-amendment.json").exists() else None,
           "parameters": PARAMETERS, "sensitivity_grid": LEVELS, "after_methods": AFTER,
           "before_methods": ["stable-legacy", "dev2-adaptive", "dev2-prominence"],
           "baseline_default": {"threshold_mode": "local", "image_threshold": 90, "neighborhood_size": 21,
@@ -86,7 +87,7 @@ def plan(output):
                           "fallback": "uncalibrated A-growth; always report coverage"},
           "mixture": {"algorithm": "one-two-intensity-gaussian-bic-v1", "bic_margin": 10, "max_samples": 1024,
                       "max_iterations": 80, "starts": [.01, .1, .3], "fallback": "no mixture-derived signal"},
-          "operating_point_selection": "Among the four declared sensitivities, minimize normalized shortfall below "
+          "operating_point_selection": "Among the five declared sensitivities, minimize normalized shortfall below "
                "85% of legacy positive field mean and 100% of legacy small field mean; then minimize negative field mean. "
                "Freeze independently for each method. Never select on validation.",
           "proxy_screen": "Negative mean <=70% legacy AND positive mean >=85% legacy AND small mean >=legacy. "
@@ -181,7 +182,7 @@ def evaluate(output, case, session, ids, masks, method, level, selected, *, seco
                         "effective_positive": int(automatic if override is None else override)})
     field = {"field": case["id"], "source": case["source"], "group": case["group"], "split": case["split"],
              "method": method, "sensitivity": level,
-             "version": "0.6.0" if method == "stable-legacy" else "0.7.0.dev2" if method.startswith("dev2-") else "0.7.0.dev3",
+             "version": "0.6.0" if method == "stable-legacy" else "0.7.0.dev2" if method.startswith("dev2-") else "0.7.0.dev4",
              "automatic_positive": sum(r["automatic_positive"] for r in records),
              "effective_positive": sum(r["effective_positive"] for r in records),
              "total": len(ids), "retained": len(session.masks), "excluded": len(session.masks)-len(ids),

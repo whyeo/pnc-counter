@@ -13,7 +13,7 @@ from skimage import feature, measure, segmentation
 from .adaptive_pnc import AdaptiveFeatures
 
 ALGORITHM = "nuclear-local-enrichment-v1"
-MAPPING = "0.1 * 20 ** (1 - sensitivity / 100)"
+MAPPING = "0.1 * 1000 ** (1 - sensitivity / 100)"
 PARAMETERS = {"reference_percentiles": [20, 80], "smooth_um": .10, "background_um": 1.5,
               "smooth_fallback_px": .9, "background_fallback_px": 10.,
               "seed_noise_multiplier": 1., "seed_reference_fraction": .005,
@@ -26,7 +26,7 @@ PARAMETERS = {"reference_percentiles": [20, 80], "smooth_um": .10, "background_u
 def sensitivity_threshold(sensitivity):
     if isinstance(sensitivity, bool) or not np.isfinite(sensitivity) or not 0 <= sensitivity <= 100:
         raise ValueError("Sensitivity must be finite and in [0, 100]")
-    return .1 * 20. ** (1 - float(sensitivity) / 100)
+    return .1 * 1000. ** (1 - float(sensitivity) / 100)
 
 
 def prepare_enrichment(image, masks, identifiers=None, calibration=None, min_distance=3,

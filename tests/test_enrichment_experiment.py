@@ -30,7 +30,7 @@ def test_selection_is_development_only_and_freezes_preservation_before_negative_
         rows.append({"method": "stable-legacy", "group": group, "split": "development",
                      "automatic_positive": count, "total": 10, "excluded": 0, "manual_overrides": 0})
     for method in AFTER:
-        for level, counts in zip(LEVELS, ((0, 1, 0), (1, 7, 2), (5, 8, 5), (9, 10, 9))):
+        for level, counts in zip(LEVELS, ((0, 1, 0), (0, 3, 0), (1, 7, 2), (5, 8, 5), (9, 10, 9))):
             for group, count in zip(GROUPS, counts):
                 rows.append({"method": method, "sensitivity": level, "group": group, "split": "development",
                              "automatic_positive": count, "total": 10, "excluded": 0, "manual_overrides": 0})
