@@ -4,8 +4,8 @@ Updated 28 November 2026. This tracker records completed research, unresolved
 findings and the next approved work. **A completed experiment does not mean that
 its detector is ready for adoption.**
 
-Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev6**;
-the earlier dev2 installer and its original metadata are preserved.
+Stable download: **v0.6.0**. Latest local installer: **0.7.0.dev7**;
+the earlier dev2/dev6 installers and their original metadata are preserved.
 Previous measured research source: **0.7.0.dev4**, commit
 `9f565cf57857f146742f2dd3bc7335a1ddff1854` (step 7; documentation-only
 changes since step 4, with unchanged application algorithms). All frozen-method
@@ -14,6 +14,29 @@ No improved biological accuracy has been demonstrated. Final v0.7 publication
 requires the owner's local testing and explicit approval.
 
 ## Current local implementation
+
+**0.7.0.dev7 adds installer maintenance to the dev6 app.** The installer detects
+the same edition, asks to upgrade an older version or repair the same version,
+reuses its custom folder, and preserves user data. Newer/unknown installed
+versions are blocked. Preview and stable remain separate. Detection and real
+confirmation/cancellation, upgrade, damaged-file repair, custom-folder reuse and
+preservation passed using the production Inno script with isolated marker-payload
+installers. Source checks: **180 tests**, Ruff and whitespace checks pass.
+
+The full dev7 runtime also passed isolated installation, public ND2/watershed
+export, enrichment slider/save/reopen and uninstall. To leave the owner's
+installed dev6 alone, this used a variant differing only in test app identity/name
+and output name/folder; the production script and runtime were identical. The
+owner's 35 application/manifest files and 12 older preview assets are hash-unchanged.
+Review calls remain 69/65/58 out of 74 at 1.2x/1.8x/2.5x, with fixed masks.
+
+Package: [PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe](../dist/preview/0.7.0.dev7/PNC-Counter-0.7.0.dev7-Preview-Setup-x64.exe),
+69,886,819 bytes, clean source `f20e053dc00fd6d6297e09fb1b3b42506e5d2b67`.
+SHA-256: `8b5f8795049f1a199b5630de1f86e8f1540256e7af9d8e683a9b51a2e5529534`.
+See [verification](../dist/preview/0.7.0.dev7/verification.json).
+README/changelog/install guide describe the new maintenance flow. No fresh SAM
+setup or separate clean-machine test was repeated. Owner packaged testing and
+explicit finalization remain pending; no push/tag/release/publication.
 
 **0.7.0.dev6 retains the owner-approved 1.8x local enrichment default and implements
 the selected fixed side-panel layout in native Python/Tk.** The threshold is
@@ -78,7 +101,8 @@ has been pushed, tagged or published.
 
 | Work | Status | Result | What remains |
 | --- | --- | --- | --- |
-| Current Windows preview package | Done locally; owner packaged testing pending | dev6 setup, checksum/provenance and current docs available. Installation, ND2 export, installed slider/save/reopen and uninstall pass. | Owner testing of the installer; separate clean-machine/fresh engine check before stable release. |
+| Installer upgrade/repair flow | Done in packaged dev7 | Detects registered same-edition install, asks Upgrade/Repair, reuses folder, preserves data and blocks newer/unknown versions. Real isolated installer cases pass; owner's dev6 unchanged. | Owner testing of the upgrade prompt and installed app. |
+| Current Windows preview package | Done locally; owner packaged testing pending | dev7 setup, checksum/provenance and current docs available. Isolated-identity installation, ND2 export, slider/save/reopen and uninstall pass. | Owner testing; separate clean-machine/fresh engine check before stable release. |
 | Native side-panel redesign and spatial numbering | Owner layout review approved; packaged testing pending | Owner selected Side panel mockup and approved native UI follow-ups. Fixed controls, spatial numbers, auto-fit and larger buttons are in dev6. | Owner testing of the packaged build; final release approval remains pending. |
 | Stable Python app and Windows release | Done | v0.6.0 remains the public download. | Preserve stable behavior while research continues. |
 | Preview workflow, consistent projections, live slider and saved revisions | Done | dev2 installer passed installation, ND2 export and review checks; 152 tests passed. | Owner testing; these checks establish functionality, not biological accuracy. |
