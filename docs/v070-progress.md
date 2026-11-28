@@ -34,30 +34,33 @@ requires the owner's local testing and explicit approval.
 | Owner-confirmed clearly positive target | Done; indicated location confirmed | Owner answered "yes P is" for P, positive IMG1/n74, crop X69/Y75. P is the original fixed LPN4/SAG5 positive anchor. | Confirmation covers the indicated location, not an exact boundary, other candidates or the folder. A/B/C remain provisionally nonconvincing. |
 | Step 6: frozen-method comparison of reviewed P/A/B/C | Done; diagnostic only | RPC6-dev4-r1-20261128: P passes every frozen stage; A passes none. Whole-nucleus-width stages reject B/C; existing local-width stages accept B/C despite their nonconvincing review. P/A saved outcomes reused; only four B/C fits and ten evidence calls added. | Statistical detectability alone does not establish PNC identity. Review the separation/tradeoff before broader work; no threshold fitted or product detector adopted. |
 | Interactive development review panel | Ready; bridge build and QA complete | PNC-DEV-REVIEW-01, rendering 3: 12 additional candidates from 12 development fields; interactive raw context/zoom, editable Positive/Negative/Unsure labels and notes, local saving. | Owner reviews the targets and clicks Save review, then tells the bridge done. Panel readiness is not completed biological review. |
-| Owner review of the 12 additional targets | Pending | The initial zero-response save was a save-path check only, not owner labels. Review responses have not been accessed or modified by this agent. | Await the owner's completion and the bridge's exact saved-review JSON/hash handoff. |
-| Descriptive contrast comparison of the additional panel | Pending owner labels | No contrast analysis, classification, threshold fitting or new experiment performed for this status update. | After the bridge handoff, compare the reviewed locations descriptively within the agreed scope; these selected development points are not independent accuracy validation. |
+| Owner review of the 12 additional targets | Complete; 12/12 | Immutable owner snapshot: 5 Positive (R01/R02/R03/R06/R10), 7 Negative (R04/R05/R07/R08/R09/R11/R12), 0 Unsure/missing, no notes. Labels cover indicated targets only. | Preserve the exact snapshot/hash; do not use a stale browser tab, latest pointer, zero-label smoke snapshot or isolated QA data as evidence. |
+| Descriptive contrast comparison of the additional panel | In progress | DRC7-dev4-r1-20261128: freeze the completed review/manifest hashes and existing raw3x3 / eroded annulus12–20sigma enrichment convention before calculation. | Compare all 12 fixed targets, mapping/scale/reference adequacy and contradictions; keep P/A/B/C separate. No cutoff optimization, detector fit or broader validation. |
 | Biological identification and detector adoption | Pending | One owner-confirmed P location and three provisionally nonconvincing A/B/C locations now provide a bounded qualitative comparison; no product detector adopted. | Structured-reference variation and plane adequacy remain unresolved; four reviewed points do not establish accuracy, a general cutoff or independent validation. |
 | Automatic full-field integration and wider validation | Deferred | Current work remains diagnostic research. | Review steps 5/6 before expanding candidate generation, adding rejection rules or measuring validation again. |
 | Final v0.7 release | Pending owner approval | No release, tag or promotion authorized. | Demonstrate useful real-image behavior and complete owner testing. |
 
-## Interactive owner review: ready; labels pending
+## Interactive owner review: complete; contrast comparison in progress
 
 The bridge built and opened **PNC-DEV-REVIEW-01**, rendering **3**, at the
 [local review page](http://127.0.0.1:8776/review.html). This is a loopback-only
 review tool with self-contained raw 16-bit crops; it does not change the product
 detector. Panel build provenance is app **0.7.0.dev4**, clean source commit
 `693ce1c1a92a1e693f781bcd99e9619fde5a71ef`. The latest measured research HEAD
-above remains the step-6 measurement; building a review interface adds no new
-detector measurement or biological labels.
+above remains the step-6 measurement until the descriptive checkpoint is complete;
+building a review interface added no detector measurement. The owner's subsequent
+completed snapshot supplies the target-level labels below.
 
-**Owner review is PENDING for 12 additional targets.** The owner should choose
-Positive, Negative or Unsure for each marked structure, add notes as needed,
-click **Save review**, then tell the bridge done. Browser drafts remain editable;
-Save review writes local JSON plus immutable dated snapshots. The bridge will
-hand over the exact reviewed JSON and hash for the subsequent descriptive
-contrast comparison. The initial empty, zero-response save checks the save path
-only and must not be used as biological evidence or review completion. This
-status update did not access or modify review responses.
+**Owner review is COMPLETE: 12/12, 5 Positive / 7 Negative / 0 Unsure.** There are
+no missing choices or notes. The owner used another tab/browser, so an original
+integrated tab may still show zero; do not save that stale view over the completed
+review. Use only the bridge-provided [immutable owner snapshot](../validation/local/pnc-discrimination/interactive-owner-review/reviews/review-20261128T064807-f9ee3275.json),
+SHA256 `392f91971672030d3198df2d57adc9dd2b4752a9534e3ad90f7ace91d7e72a57`.
+It has `testMode=false`, matching panel ID/image hashes, and the bridge's
+[completed-review verification](../validation/local/pnc-discrimination/interactive-owner-review/completed-review-verification.json).
+The initial empty save was only a save-path check; neither it nor isolated QA data
+is owner evidence. This bookkeeping/analysis reads the fixed saved snapshot,
+without browser interaction or response changes.
 
 The panel uses stored **A-growth** measured candidates, taking the strongest
 stored LocalContrast per eligible accepted/unoverridden nucleus, with candidate
@@ -75,10 +78,14 @@ This is a selected, exploratory development panel, not prevalence estimation or
 independent accuracy validation. Existing candidate extraction can omit other
 true PNCs; the panel does not exhaustively label whole nuclei, fields or folders.
 It introduces no new detector/PNC fit, raw ND2 reading, validation access,
-training, threshold or model selection. While waiting, do not classify these
-examples, inspect responses, fit a cutoff, launch experiments or promote an
-algorithm. Subsequent contrast comparison is **PENDING owner labels**, not
-authorized as an unlabeled sweep by this bookkeeping update.
+training, threshold or model selection. The previously pending descriptive
+comparison is now authorized and **IN PROGRESS** using the completed immutable
+labels. Freeze the plan before measuring: same fixed targets/denominators,
+existing raw3x3 median/peak divided by the eroded in-nucleus annulus12–20 saved
+small-sigma median convention; preserve reference samples and report support,
+contamination and coordinate/scale checks. Keep previous P/A/B/C results separate.
+No optimized cutoff, new threshold/model, broader run or algorithm adoption is
+authorized by this descriptive exploratory-development comparison.
 
 The bridge's [UI verification](../validation/local/pnc-discrimination/interactive-owner-review/ui-verification.json)
 records isolated test storage for buttons/keyboard, notes/navigation, reload,
@@ -169,7 +176,8 @@ assets or files included in the Git repository.
 | Owner biological review of A/B/C | Qualitative review revision 2; source dev4 unchanged; informational steering after step 5 | [Reviewed raw image](../validation/local/pnc-discrimination/small-anchor-owner-review/small-example-ABC.png), [verbatim feedback and provenance](../validation/local/pnc-discrimination/small-anchor-owner-review/owner-review-v2.json) |
 | Owner confirmation of P | Confirmation revision 2; source dev4 unchanged | [Confirmed review report](../validation/local/pnc-discrimination/positive-reference-owner-review/report-v2.html), [verbatim confirmation and provenance](../validation/local/pnc-discrimination/positive-reference-owner-review/owner-confirmation-v2.json) |
 | Reviewed points step 6 | RPC6-dev4-r1-20261128; app dev4 before/after, render 1; clean measurement HEAD 6adb2e6a14de7b89923345e69bc79f9018fb2af4 | [Frozen P/A/B/C comparison](../validation/local/pnc-discrimination/reviewed-points-step6-dev4/report.html) |
-| Interactive additional development panel | PNC-DEV-REVIEW-01; app dev4, rendering 3; built at clean HEAD 693ce1c1a92a1e693f781bcd99e9619fde5a71ef; panel ready, owner labels pending | [Local review page](http://127.0.0.1:8776/review.html), [build record](../validation/local/pnc-discrimination/interactive-owner-review/build-verification.json), [UI QA record](../validation/local/pnc-discrimination/interactive-owner-review/ui-verification.json) |
+| Interactive additional development panel | PNC-DEV-REVIEW-01; app dev4, rendering 3; built at clean HEAD 693ce1c1a92a1e693f781bcd99e9619fde5a71ef; owner review complete 5 Positive / 7 Negative | [Immutable owner snapshot](../validation/local/pnc-discrimination/interactive-owner-review/reviews/review-20261128T064807-f9ee3275.json), [completion verification](../validation/local/pnc-discrimination/interactive-owner-review/completed-review-verification.json), [build record](../validation/local/pnc-discrimination/interactive-owner-review/build-verification.json) |
+| Descriptive reviewed-panel contrast | DRC7-dev4-r1-20261128; in progress | Pending |
 
 ### Owner biological review: small IMG9/n23
 
