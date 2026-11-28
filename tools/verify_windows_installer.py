@@ -124,6 +124,8 @@ def main():
     parser.add_argument("--expected-commit")
     parser.add_argument("--setup-sam", action="store_true", help="Run real CPU setup and analyze with SAM")
     parser.add_argument("--preview", action="store_true", help="Verify the isolated preview installer")
+    parser.add_argument("--review-analysis", type=Path,
+                        help="Also test installed enrichment slider/save/reopen on an existing local analysis")
     args = parser.parse_args()
     if sys.platform != "win32":
         parser.error("Installer verification requires Windows")
@@ -163,7 +165,19 @@ def main():
         code = inspect.getsource(installed_analysis) + f"\ninstalled_analysis(*{parameters!r})\n"
         subprocess.run([str(python), "-I", "-c", code], check=True, timeout=600, **options)
         record.update(json.loads((workdir / "analysis-check.json").read_text(encoding="utf-8")))
+        record["passed"] = False  # The complete installer check is still pending.
+        if args.review_analysis:
+            subprocess.run([str(python), "-I", str(ROOT / "tools/smoke_pnc_slider.py"),
+                            "--runtime", str(install / "runtime"),
+                            "--analysis", str(args.review_analysis.resolve()),
+                            "--workdir", str(workdir / "review"), "--method", "enrichment"],
+                           check=True, timeout=600, **options)
+            record["review_check"] = json.loads((workdir / "review/slider-verification.json").read_text(encoding="utf-8"))
+        documentation = ["README.md", "CHANGELOG.md", "docs/windows-installer.md", "docs/manual-review.md"]
+        assert all((install / name).read_bytes() == (ROOT / name).read_bytes() for name in documentation)
+        record["bundled_documentation"] = documentation
         record["installer_sha256"] = digest(args.installer)
+        record["passed"] = True
     finally:
         assert install.resolve().is_relative_to(workdir)
         subprocess.run([str(install / "unins000.exe"), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",

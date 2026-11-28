@@ -2,6 +2,9 @@
 
 ## v0.7.0 review interface preview (0.7.0.dev6, unreleased)
 
+- Packages the local preview with current installation/review guides and
+  changelog, plus versioned checksums and build provenance. Prior previews are
+  preserved; this does not finalize or publish v0.7.0.
 - Fits the image automatically when review first opens, while preserving later
   user zoom. Enlarges main-window buttons and anchors sensitivity captions to
   the slider's left and right ends.

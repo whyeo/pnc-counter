@@ -51,8 +51,10 @@ Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 [Files]
 Source: "{#RuntimeDir}\*"; DestDir: "{app}\runtime"; Excludes: "*.pyc,*.pyo,*.pdb"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\..\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\docs\windows-installer.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\docs\windows-installer.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "..\..\docs\manual-review.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\runtime\pythonw.exe"; Parameters: "-I -m nucleus_analysis.desktop_launcher"; WorkingDir: "{userdocs}"

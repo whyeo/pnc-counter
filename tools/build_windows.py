@@ -145,17 +145,18 @@ def main():
         parser.error("Install Inno Setup and pass --inno PATH/ISCC.exe, or use --bootstrap-compiler")
     filename = (f"PNC-Counter-{version}-Preview-Setup-x64" if args.preview
                 else INSTALLER_PATTERN.format(version=version).removesuffix(".exe"))
-    output_dir = ROOT / ("dist/preview" if args.preview else "dist")
+    # Keep every preview's checksums/provenance beside that version, preserving
+    # older preview installers and their previously recorded sidecars.
+    output_dir = ROOT / "dist/preview" / version if args.preview else ROOT / "dist"
     options = (["/DAppName=PNC Counter Preview", "/DAppIdentity={{D397F5FC-A509-4C44-8959-18247B83FDF1}"]
                if args.preview else [])
     run([compiler, "/Qp", f"/DAppVersion={version}", f"/DWindowsVersion={version.split('.dev')[0]}.0",
          f"/DFileBaseName={filename}", f"/DRuntimeDir={runtime}", f"/DOutputDir={output_dir}", *options,
          ROOT / "installer/windows/pnc-counter.iss"])
     installer = output_dir / f"{filename}.exe"
-    notes = ("- Local v0.7 preview: consistent projections, multiscale PNC scores and compact Z evidence.\n"
-             "- The control comparison failed the preservation trade-off; legacy defaults remain.\n"
-             "- Test controls and small PNCs locally; biological accuracy is not established.\n"
-             "- Separate preview installation and preferences; not approved for a stable release.\n") if args.preview else None
+    notes = ("- Count PNC-positive cells using adjustable local enrichment, starting at 1.8x background.\n"
+             "- Review nuclei in a fixed side panel with automatic image fit, manual PNC calls and spatial numbering.\n"
+             "- Save reviewed counts, overlays and number mappings; this preview awaits owner acceptance.\n") if args.preview else None
     write_release_assets(installer, manifest, notes)
     print(f"Installer: {installer}", flush=True)
 

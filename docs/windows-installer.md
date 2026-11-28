@@ -1,10 +1,16 @@
 # Windows installer and analysis setup
 
-Double-click `PNC-Counter-0.6.0-Setup-x64.exe`, follow the installation pages,
+For the current local preview, double-click
+`PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe`, follow the installation pages,
 then leave **Open PNC Counter and complete first-time analysis setup** selected.
 The installer includes a private Python 3.12 runtime, Tk, and the base image tools.
 It supports 64-bit Windows 10/11 without a system Python, Git, compiler, or
 administrator account. It does not change PATH or other Python installations.
+
+Preview builds install as **PNC Counter Preview**, with a separate Start-menu
+entry, application identity and preferences. The stable release remains v0.6.0.
+The preview uses the 1.8x local enrichment default and the native side-panel
+review interface; testing the packaged preview does not publish a release.
 
 The first-run wizard recommends CPU or a compatible NVIDIA GPU, explains the
 downloads, installs PyTorch and the pinned official Meta SAM 2.1 package, downloads
@@ -31,15 +37,19 @@ Saved setup is reused on later launches. **Redetect hardware** refreshes usable
 hardware after a driver change; setup and repair can install a different processing
 engine if needed. SAM 3 remains experimental and is not installed by this wizard.
 
-Application files are installed under `%LOCALAPPDATA%/Programs/PNC Counter` by
+Preview application files are installed under `%LOCALAPPDATA%/Programs/PNC Counter Preview` by
 default. Preferences, models, setup logs and separate analysis environments are
-under `%LOCALAPPDATA%/PNC Counter`. Images/results stay at the paths you choose.
+under `%LOCALAPPDATA%/PNC Counter Preview`. Images/results stay at the paths you choose.
 Uninstall removes application files and shortcuts, preserving these user files.
 Old analysis environments are retained to avoid deleting an environment still in
 use by another window. They may be removed manually after closing the application.
 
 This build is unsigned. Windows may display its publisher/SmartScreen prompt;
 code signing and testing on a separate clean Windows machine are release steps.
+
+The installer also includes the current README, changelog, manual-review guide
+and this installation guide. Saved review exports contain the threshold, manual
+decisions and spatial-number-to-mask-ID mapping.
 
 ## Building the installer
 
@@ -48,6 +58,17 @@ From a Windows checkout with the development dependencies installed:
 ```powershell
 python tools/build_windows.py --bootstrap-compiler
 ```
+
+For a local development preview, commit the source first and use:
+
+```powershell
+python tools/build_windows.py --preview --require-clean --bootstrap-compiler
+```
+
+For version 0.7.0.dev6 this produces
+`dist/preview/0.7.0.dev6/PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe`, with
+`SHA256SUMS.txt`, `build-info.json` and `release-notes.md` beside it. Older
+preview files are preserved. A `.dev` preview cannot create a stable version tag.
 
 Alternatively install Inno Setup yourself and supply
 `--inno "C:/Program Files (x86)/Inno Setup 6/ISCC.exe"`. Use `--prepare-only` to

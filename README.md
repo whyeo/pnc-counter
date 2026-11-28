@@ -12,6 +12,25 @@ must be tested locally before its release is finalized.
 This README describes the current revision. Version history is in the
 [changelog](CHANGELOG.md).
 
+## Install the Windows preview
+
+The local test installer is **PNC-Counter-0.7.0.dev6-Preview-Setup-x64.exe**.
+This preview has not been published as a stable GitHub Release.
+
+1. Double-click the installer and follow the setup pages. It installs **PNC
+   Counter Preview**, separately from the stable application.
+2. Open **PNC Counter Preview** from the Start menu. Python is included; you do
+   not need to install Python or run terminal commands.
+3. Follow the first-run analysis setup to install PyTorch/SAM and download the
+   selected nucleus model. Choose CPU or the recommended compatible NVIDIA GPU.
+   This step needs internet access and can take several minutes. Saved setup is
+   reused on later launches.
+4. Add your images, analyze, adjust the 1.80x threshold and review the calls.
+
+You can skip engine setup initially to review a saved analysis. Return through
+**Advanced settings → Set up / repair SAM** when ready to analyze new images.
+See the [Windows installation guide](docs/windows-installer.md) for setup details.
+
 ## Analyze and review images
 
 1. Open **PNC Counter** and complete image-engine setup if prompted.
@@ -137,9 +156,9 @@ A setup executable includes the base Python application. Its first-run wizard
 installs the analysis engine and verifies the selected model. Users of such a
 build can follow its guided setup instead of the source commands above.
 
-The current v0.7 preview is awaiting local acceptance; this README does not link
-to an unreleased installer. See the [Windows build guide](docs/windows-installer.md)
-for packaging and setup details.
+The current v0.7 preview is awaiting packaged-build acceptance. The local builder
+places each preview and its checksums/provenance in its own versioned folder;
+see the [Windows build guide](docs/windows-installer.md).
 
 ## Batch command line
 
